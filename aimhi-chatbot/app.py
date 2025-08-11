@@ -18,7 +18,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/chat', methods=['POST'])
-async def chat():
+def chat():
     data = request.json
     message = data.get('message', '')
     session_id = data.get('session_id')
@@ -27,7 +27,7 @@ async def chat():
     
     session = get_session(session_id)
     fsm = session['fsm']
-    reply = await route_message(session_id, message)
+    reply = route_message(session_id, message)
     
     return jsonify({
         'reply': reply,

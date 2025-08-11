@@ -1,12 +1,84 @@
 {
     "risk_phrases": [
-        {"phrase": "suicide", "variants": ["suicidal", "kill myself"]},
-        {"phrase": "self harm", "variants": ["hurt myself", "cutting"]},
-        {"phrase": "end it all", "variants": ["end my life", "not worth living"]}
+        {"phrase": "suicide", "variants": ["suicidal", "kill myself", "take my life", "end my life", "suicde", "sucide", "suiside", "off myself"]},
+        {"phrase": "self harm", "variants": ["hurt myself", "cutting", "cut myself", "harm myself", "injure myself", "burn myself", "self-harm", "selfharm"]},
+        {"phrase": "end it all", "variants": ["end it", "not worth living", "better off dead", "don't want to live", "can't go on", "cant go on", "no point living", "want to die"]},
+        {"phrase": "overdose", "variants": ["OD", "take pills", "swallow pills", "too many pills", "bottle of pills"]},
+        {"phrase": "jump off", "variants": ["jump from", "leap off", "throw myself", "step off"]},
+        {"phrase": "hang myself", "variants": ["hanging", "noose", "rope around neck"]},
+        {"phrase": "slit wrists", "variants": ["cut wrists", "open veins", "bleed out"]},
+        {"phrase": "worthless", "variants": ["I'm worthless", "im worthless", "im worthles", "no good", "waste of space", "burden", "better without me", "don't deserve to live"]},
+        {"phrase": "hopeless", "variants": ["no hope", "hopelessness", "give up", "can't cope", "too much", "can't take it"]},
+        {"phrase": "nobody cares", "variants": ["no one cares", "alone", "nobody loves me", "no one would miss me", "better if I wasn't here"]},
+        {"phrase": "goodbye", "variants": ["saying goodbye", "final goodbye", "this is goodbye", "farewell", "last message"]},
+        {"phrase": "can't sleep", "variants": ["insomnia", "nightmares", "up all night", "haven't slept", "can't rest"]},
+        {"phrase": "voices", "variants": ["hearing voices", "they tell me", "voices in my head", "being told to"]},
+        {"phrase": "plan", "variants": ["have a plan", "made a plan", "know how", "decided how", "figured out how"]},
+        {"phrase": "method", "variants": ["found a way", "know a way", "have the means"]},
+        {"phrase": "pain", "variants": ["unbearable pain", "can't stand the pain", "too much pain", "hurts too much"]},
+        {"phrase": "trapped", "variants": ["no way out", "stuck", "no escape", "cornered", "no options"]},
+        {"phrase": "disappear", "variants": ["want to disappear", "vanish", "not exist", "fade away", "be gone"]},
+        {"phrase": "sleep forever", "variants": ["never wake up", "eternal sleep", "permanent sleep"]},
+        {"phrase": "darkness", "variants": ["everything is dark", "only darkness", "black hole", "void", "empty inside"]},
+        {"phrase": "numb", "variants": ["feel nothing", "dead inside", "emotionally numb", "can't feel"]},
+        {"phrase": "tired of fighting", "variants": ["tired of trying", "exhausted", "worn out", "can't fight anymore", "giving up the fight"]},
+        {"phrase": "please help", "variants": ["help me", "need help", "someone help", "desperate", "emergency", "crisis"]},
+        {"phrase": "scared", "variants": ["terrified", "frightened", "afraid of myself", "scared of what I might do"]},
+        {"phrase": "losing control", "variants": ["out of control", "can't control", "might do something", "afraid I'll"]},
+        {"phrase": "final", "variants": ["final decision", "last day", "final act", "end game", "last time"]},
+        {"phrase": "peace", "variants": ["want peace", "find peace", "finally at peace", "peaceful way"]},
+        {"phrase": "accident", "variants": ["make it look like an accident", "accidental", "no one will know"]},
+        {"phrase": "sorry", "variants": ["I'm sorry", "forgive me", "apologize", "sorry for everything"]},
+        {"phrase": "letter", "variants": ["suicide note", "goodbye letter", "final letter", "last words", "writing a note"]},
+        {"phrase": "pills", "variants": ["sleeping pills", "medication", "tablets", "prescription", "pharmacy"]},
+        {"phrase": "bridge", "variants": ["off the bridge", "from the bridge", "to the bridge"]},
+        {"phrase": "train", "variants": ["in front of train", "train tracks", "railway", "oncoming train"]},
+        {"phrase": "gun", "variants": ["firearm", "shoot myself", "bullet", "trigger"]},
+        {"phrase": "drowning", "variants": ["drown myself", "under water", "can't swim", "into the water"]},
+        {"phrase": "car", "variants": ["crash car", "drive into", "car accident", "off the road"]},
+        {"phrase": "alcohol", "variants": ["drinking heavily", "drunk", "alcohol poisoning", "drink myself"]},
+        {"phrase": "drugs", "variants": ["drug overdose", "too many drugs", "illegal drugs", "substance abuse"]},
+        {"phrase": "blade", "variants": ["razor", "knife", "sharp object", "cutting tool"]},
+        {"phrase": "suffocate", "variants": ["suffocation", "can't breathe", "stop breathing", "plastic bag"]},
+        {"phrase": "poison", "variants": ["poisoning", "toxic", "chemicals", "bleach"]},
+        {"phrase": "high place", "variants": ["tall building", "cliff", "rooftop", "ledge"]},
+        {"phrase": "ready", "variants": ["I'm ready", "prepared", "time has come", "ready to go"]},
+        {"phrase": "tonight", "variants": ["do it tonight", "tonight's the night", "before tomorrow", "by morning"]},
+        {"phrase": "weekend", "variants": ["this weekend", "on the weekend", "before Monday"]},
+        {"phrase": "birthday", "variants": ["on my birthday", "before my birthday", "last birthday"]},
+        {"phrase": "anniversary", "variants": ["death anniversary", "on the anniversary"]},
+        {"phrase": "everyone would be better", "variants": ["they'd be better off", "world would be better", "better place without me"]}
     ],
     "crisis_resources": {
-        "13YARN": "13 92 76",
-        "Lifeline": "13 11 14",
-        "Kids Helpline": "1800 55 1800"
+        "13YARN": {
+            "number": "13 92 76",
+            "description": "24/7 crisis support for Aboriginal & Torres Strait Islander young people"
+        },
+        "Lifeline": {
+            "number": "13 11 14",
+            "description": "24/7 crisis support and suicide prevention"
+        },
+        "Kids Helpline": {
+            "number": "1800 55 1800",
+            "description": "24/7 counselling for young people aged 5-25"
+        },
+        "Suicide Call Back Service": {
+            "number": "1300 659 467",
+            "description": "24/7 telephone, video and online counselling"
+        },
+        "Beyond Blue": {
+            "number": "1300 22 4636",
+            "description": "24/7 support for depression, anxiety and more"
+        },
+        "Emergency": {
+            "number": "000",
+            "description": "For immediate danger or medical emergency"
+        }
+    },
+    "crisis_message": {
+        "header": "I'm concerned about what you've shared",
+        "body": "Your safety is the most important thing right now. Please reach out to someone who can help:",
+        "footer": "You don't have to go through this alone. These services are here to support you.",
+        "continue_prompt": "Would you like to continue our conversation, or would you prefer to speak with a crisis counsellor?"
     }
 }
