@@ -1,14 +1,14 @@
 
 {
     "welcome": {
-        "prompt": "G'day! Welcome to Yarn - I'm here to have a supportive chat using the Stay Strong approach. This is your safe space to yarn about your wellbeing and strength. Ready to start our yarn together?",
+        "prompt": "G'day! Good to meet you :) I'm here for a supportive yarn about your wellbeing. We'll take it easy - just a safe chat at your own pace. Ready to start?",
         "alternatives": [
-            "Hello there! I'm Yarn, and I'm here to support you through the Stay Strong 4-step approach. Ready to have a yarn?",
-            "Hey! Thanks for dropping by. I'm here to yarn with you about your strengths and support people. Shall we get started?"
+            "Hey there! I'm Yarn 🌟 Want to have a chat about what's going well and what's on your mind?",
+            "G'day! Thanks for stopping by. I'm here to yarn with you about your strengths and the people who support you. Sounds good?"
         ]
     },
     "support_people": {
-        "prompt": "Let's yarn about your support people - the mob who've got your back. Who are the people in your life who support you? This might be family, friends, Elders, teachers, or community members. Even if it feels like there aren't many, let's think about who cares about you.",
+        "prompt": "Deadly! Let's start by talking about your support people - the mob who've got your back. Who are the people in your life who care about you?",
         "clarify": "Tell me about the people in your life - family, friends, teachers, Elders, or anyone who's been there for you. Even if it's just one person, that's a good start.",
         "no_support": "That sounds really tough, and I hear you. Sometimes support can come from unexpected places - maybe a teacher who's been kind, an Elder in your community, a cousin, or even people online. What about anyone who's shown they care, even in small ways?",
         "offer_choice": "I hear what you're saying, and that's completely valid. Would you like to think about support people a bit more, or shall we move on and yarn about your strengths instead?",

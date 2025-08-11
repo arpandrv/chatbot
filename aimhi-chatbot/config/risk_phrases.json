@@ -42,7 +42,7 @@
         {"phrase": "suffocate", "variants": ["suffocation", "can't breathe", "stop breathing", "plastic bag"]},
         {"phrase": "poison", "variants": ["poisoning", "toxic", "chemicals", "bleach"]},
         {"phrase": "high place", "variants": ["tall building", "cliff", "rooftop", "ledge"]},
-        {"phrase": "ready", "variants": ["I'm ready", "prepared", "time has come", "ready to go"]},
+        {"phrase": "ready to die", "variants": ["ready to end it", "ready to end my life", "prepared to die", "my time has come"]},
         {"phrase": "tonight", "variants": ["do it tonight", "tonight's the night", "before tomorrow", "by morning"]},
         {"phrase": "weekend", "variants": ["this weekend", "on the weekend", "before Monday"]},
         {"phrase": "birthday", "variants": ["on my birthday", "before my birthday", "last birthday"]},

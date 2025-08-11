@@ -60,13 +60,17 @@ def route_message(session_id, message):
     
     # Handle conversation flow with intent validation
     if fsm.is_welcome():
-        # Welcome state - accept greetings or move forward
-        if intent in ['greeting', 'affirmation'] or confidence > 0.5:
+        # Welcome state - handle initial interaction more gradually
+        if intent == 'greeting':
+            # First greeting - give welcome message, stay in welcome state
+            reply = content.get('welcome', {}).get('prompt', "G'day! Good to meet you 😊 Ready for a yarn about your wellbeing?")
+        elif intent in ['affirmation'] or (confidence > 0.6 and intent in ['greeting', 'affirmation']):
+            # User is ready to proceed - advance to support_people
             fsm.next_step()
             reply = content['support_people']['prompt']
         else:
-            # If unclear, provide welcome message
-            reply = content.get('welcome', {}).get('prompt', "Hello! I'm here to support you through the Stay Strong approach. Ready to start?")
+            # Unclear or first visit - provide welcome message
+            reply = content.get('welcome', {}).get('prompt', "G'day! I'm here to have a supportive yarn with you. Ready to start?")
     
     elif fsm.is_support_people():
         # Support people step - validate user provided support information
