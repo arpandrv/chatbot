@@ -215,6 +215,139 @@ class TestIntegration(unittest.TestCase):
         # For now, just verify no errors occurred
         self.assertTrue(True)  # If we got here, no database errors
     
+    def test_progressive_fallback_support_people(self):
+        """Test progressive fallback system for support_people step"""
+        
+        # Start conversation
+        route_message(self.session_id, "Hello")
+        
+        # First unclear response - should get clarification (attempt 1)
+        response = route_message(self.session_id, "I don't know what to say")
+        self.assertTrue(
+            "tell me about" in response.lower() or 
+            "people in your life" in response.lower()
+        )
+        
+        # Check FSM state - should still be at support_people
+        session = get_session(self.session_id)
+        fsm = session['fsm']
+        self.assertEqual(fsm.state, 'support_people')
+        self.assertEqual(fsm.get_attempt_count(), 1)  # First attempt
+        
+        # Second unclear response - should get offer_choice (attempt 2)
+        response = route_message(self.session_id, "Not sure")
+        self.assertTrue(
+            "would you like to think about support people" in response.lower() and
+            "move on" in response.lower()
+        )
+        self.assertEqual(fsm.get_attempt_count(), 2)  # Second attempt
+        
+        # Third unclear response - should force advance (attempt 3)
+        response = route_message(self.session_id, "Maybe")
+        self.assertTrue(
+            ("acknowledge" in response.lower() or "respect that" in response.lower()) and
+            "strengths" in response.lower()
+        )
+        
+        # Should have advanced to strengths step
+        session = get_session(self.session_id)
+        fsm = session['fsm']
+        self.assertEqual(fsm.state, 'strengths')
+        self.assertEqual(fsm.get_attempt_count(), 0)  # Reset for new step
+    
+    def test_progressive_fallback_user_choice_to_advance(self):
+        """Test when user chooses to advance after offer_choice"""
+        
+        # Navigate to strengths and trigger offer_choice
+        route_message(self.session_id, "Hello")
+        route_message(self.session_id, "My family supports me")
+        route_message(self.session_id, "I don't know")  # First unclear (clarification)
+        response = route_message(self.session_id, "Not sure")  # Second unclear (get offer_choice)
+        self.assertIn("keep thinking about this", response.lower())
+        
+        # User chooses to move on with affirmation
+        response = route_message(self.session_id, "Yes, let's move on")
+        self.assertTrue(
+            ("okay" in response.lower() or "perfectly fine" in response.lower()) and
+            ("worries" in response.lower() or "on your mind" in response.lower())
+        )
+        
+        # Should have advanced to worries step
+        session = get_session(self.session_id)
+        fsm = session['fsm']
+        self.assertEqual(fsm.state, 'worries')
+    
+    def test_progressive_fallback_goals_to_summary(self):
+        """Test progressive fallback from goals step leads to summary"""
+        
+        # Navigate to goals step
+        route_message(self.session_id, "Hello")
+        route_message(self.session_id, "My family supports me")
+        route_message(self.session_id, "I'm good at sports")
+        route_message(self.session_id, "School stress worries me")
+        
+        # Now at goals - trigger progressive fallback
+        route_message(self.session_id, "I don't know")  # First unclear (clarification)
+        response = route_message(self.session_id, "Not sure")  # Second unclear (get offer_choice)
+        self.assertIn("thinking about goals might be challenging", response.lower())
+        
+        # Third unclear response - should force advance to summary
+        response = route_message(self.session_id, "Maybe")
+        self.assertTrue(
+            "perfectly fine" in response.lower() and
+            ("what we talked about today" in response.lower() or 
+             "Support People" in response or
+             "Strengths" in response or
+             "Worries" in response)
+        )
+        
+        # Should have advanced to summary with conversation recap
+        session = get_session(self.session_id)
+        fsm = session['fsm']
+        self.assertEqual(fsm.state, 'summary')
+    
+    def test_good_response_bypasses_progressive_fallback(self):
+        """Test that good responses bypass the attempt system entirely"""
+        
+        # Start conversation
+        route_message(self.session_id, "Hello")
+        
+        # Give a good response - should advance immediately without attempts
+        response = route_message(self.session_id, "My family and friends support me")
+        self.assertIn("strengths", response.lower())
+        
+        # Verify FSM advanced and attempt counter is still 0
+        session = get_session(self.session_id)
+        fsm = session['fsm']
+        self.assertEqual(fsm.state, 'strengths')
+        self.assertEqual(fsm.get_attempt_count(), 0)  # No attempts used
+        
+        # Response should be saved
+        self.assertEqual(fsm.get_response('support_people'), "My family and friends support me")
+    
+    def test_attempt_counters_independent_per_step(self):
+        """Test that attempt counters are independent for each conversation step"""
+        
+        # Start and force advance through support_people with multiple attempts
+        route_message(self.session_id, "Hello")
+        route_message(self.session_id, "um what")  # attempt 1 (clarification)
+        route_message(self.session_id, "um what")  # attempt 2 (offer_choice)
+        route_message(self.session_id, "um what")  # attempt 3 (force advance)
+        
+        # Should be at strengths with reset attempt counter
+        session = get_session(self.session_id)
+        fsm = session['fsm']
+        self.assertEqual(fsm.state, 'strengths')
+        self.assertEqual(fsm.get_attempt_count(), 0)  # Reset for new step
+        
+        # Test that strengths step has its own independent attempt counter
+        route_message(self.session_id, "um what")  # This should be attempt 1 for strengths
+        self.assertEqual(fsm.get_attempt_count(), 1)
+        
+        # The support_people counter should show the final attempts used
+        self.assertEqual(fsm.attempts['support_people'], 3)
+        self.assertEqual(fsm.attempts['strengths'], 1)
+    
     def test_performance_timing(self):
         """Test that response times meet requirements (<500ms for rule path)"""
         import time

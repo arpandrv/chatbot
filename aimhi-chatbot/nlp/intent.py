@@ -15,13 +15,18 @@ INTENT_PATTERNS = {
         'keywords': ['family', 'friends', 'mom', 'dad', 'brother', 'sister', 'cousin', 
                     'aunt', 'uncle', 'grandma', 'grandpa', 'teacher', 'elder', 'mentor',
                     'counsellor', 'therapist', 'doctor', 'nurse', 'community', 'mob',
-                    'people', 'support', 'help', 'care', 'love', 'there for me'],
+                    'people', 'support', 'help', 'care', 'love', 'there for me', 'nice',
+                    'kind', 'counselor', 'psychologist', 'social worker'],
         'patterns': [
             r'\b(my|have|got)\s+(family|friends|people)',
             r'\b(mom|dad|mum|mother|father|parents)',
             r'\b(brother|sister|sibling|cousin)',
             r'\b(no one|nobody|alone|by myself)',
             r'\b(elder|aunty|uncle|nan|pop)',
+            r'\b(teacher|counselor|therapist)\s+(is|was|seems)',
+            r'\btalk to (my|a|the)\s+(counselor|therapist|teacher)',
+            r'\b(nice|kind|caring|supportive)\s+(teacher|person|family)',
+            r'\b(have|got)\s+(good|great|close|supportive)\s+(friends|family)',
         ]
     },
     'strengths': {
@@ -128,34 +133,87 @@ def classify_intent(text):
     
     intent_scores = {}
     
+    # Strong contextual patterns that should override other signals
+    strong_patterns = {
+        'strengths': [
+            r"\b(i'm|i am|im)\s+(good at|great at|skilled|talented)",
+            r"\bproud of\b",
+            r"\bmy strength\b",
+            r"\bi can\b",
+            r"\bi love (doing|playing|making)",
+        ],
+        'support_people': [
+            r"\b(my|have|got)\s+(family|friends|people)\s+(support|help|care|love|there for)",
+            r"\bpeople who support\b",
+            r"\bpeople in my life\b",
+        ],
+        'worries': [
+            r"\bworr(y|ied|ying) about\b",
+            r"\bstressed about\b",
+            r"\bon my mind\b",
+            r"\bkeeps me up\b",
+        ],
+        'goals': [
+            r"\bwant to (be|become|get|achieve|finish|complete)\b",
+            r"\bmy goal\b",
+            r"\bplan to\b",
+            r"\bhope to\b",
+        ]
+    }
+    
+    # First pass: Check for strong contextual patterns
+    for intent_name, patterns in strong_patterns.items():
+        for pattern in patterns:
+            if re.search(pattern, text_lower):
+                # Strong context match - give high confidence and reduce conflicting intents
+                intent_scores[intent_name] = intent_scores.get(intent_name, 0) + 0.8
+    
+    # Second pass: Regular scoring for all intents
     for intent_name, intent_data in INTENT_PATTERNS.items():
-        score = 0.0
+        base_score = intent_scores.get(intent_name, 0)
         
         # Check keyword matches
         keywords = intent_data['keywords']
+        keyword_score = 0
         for keyword in keywords:
             if keyword in text_lower:
-                score += 0.3
+                keyword_score += 0.2  # Reduced from 0.3 to give less weight
             # Fuzzy matching for typos
             elif fuzz.partial_ratio(keyword, text_lower) > 80:
-                score += 0.2
+                keyword_score += 0.15
         
         # Check regex patterns
         patterns = intent_data['patterns']
+        pattern_score = 0
         for pattern in patterns:
             if re.search(pattern, text_lower):
-                score += 0.4
+                pattern_score += 0.3  # Reduced from 0.4
         
         # Boost score for exact matches
+        exact_match_score = 0
         if len(text_lower.split()) <= 3:  # Short responses
             for keyword in keywords:
                 if text_lower == keyword:
-                    score += 0.5
+                    exact_match_score += 0.5
         
-        intent_scores[intent_name] = min(score, 1.0)  # Cap at 1.0
+        total_score = base_score + keyword_score + pattern_score + exact_match_score
+        intent_scores[intent_name] = min(total_score, 1.0)  # Cap at 1.0
     
-    # Get the highest scoring intent
+    # Context-aware tie breaking
     if intent_scores:
+        # If we have a strengths response that starts with "I'm good at", prioritize it
+        if ('strengths' in intent_scores and 
+            intent_scores['strengths'] >= 0.6 and
+            re.search(r"\b(i'm|i am|im)\s+(good at|great at)", text_lower)):
+            intent_scores['strengths'] += 0.2
+        
+        # If someone mentions support in context of what they do, it's likely strengths
+        if ('strengths' in intent_scores and 'support_people' in intent_scores and
+            'helping' in text_lower and 'good at' in text_lower):
+            intent_scores['strengths'] += 0.3
+            intent_scores['support_people'] -= 0.2
+        
+        # Get the highest scoring intent
         best_intent = max(intent_scores.items(), key=lambda x: x[1])
         intent_name, confidence = best_intent
         

@@ -11,6 +11,8 @@
         "prompt": "Let's yarn about your support people - the mob who've got your back. Who are the people in your life who support you? This might be family, friends, Elders, teachers, or community members. Even if it feels like there aren't many, let's think about who cares about you.",
         "clarify": "Tell me about the people in your life - family, friends, teachers, Elders, or anyone who's been there for you. Even if it's just one person, that's a good start.",
         "no_support": "That sounds really tough, and I hear you. Sometimes support can come from unexpected places - maybe a teacher who's been kind, an Elder in your community, a cousin, or even people online. What about anyone who's shown they care, even in small ways?",
+        "offer_choice": "I hear what you're saying, and that's completely valid. Would you like to think about support people a bit more, or shall we move on and yarn about your strengths instead?",
+        "acknowledge_move": "I understand, and I respect that. Let's move forward then.",
         "encourage": "It's great that you have people who support you. Having that connection to family, friends, or community is really important for your wellbeing.",
         "examples": "Support people could be your mum, dad, siblings, cousins, aunties, uncles, nan, pop, friends, teachers, youth workers, or community members who care about you."
     },
@@ -18,6 +20,8 @@
         "prompt": "Now let's yarn about your strengths - the things that make you deadly! What are you good at? What makes you proud? This could be anything - maybe you're good at sport, music, art, helping others, making people laugh, being a good friend, or getting through tough times. Everyone has strengths, even if they're hard to see sometimes.",
         "clarify": "What are you good at? It could be anything - sports, music, art, cooking, gaming, being kind to others, making people laugh, or even just surviving tough times. What would your support people say you're good at?",
         "encourage": "Everyone has strengths, even when they're hard to see. Maybe you're good at listening to your friends, you're creative, you're strong for getting through difficult times, or you have skills you haven't even noticed yet. What's one small thing you do well?",
+        "offer_choice": "I hear you, and sometimes it's hard to see our own strengths. Would you like to keep thinking about this, or shall we move on to talk about what's been on your mind?",
+        "acknowledge_move": "That's okay. Sometimes our strengths become clearer over time.",
         "examples": "Your strengths might be playing footy, drawing, singing, dancing, gaming, cooking, helping family, being loyal to friends, or having the strength to keep going when things get tough.",
         "affirm": "Those are some deadly strengths! It's important to recognize what you're good at and what makes you special."
     },
@@ -26,12 +30,16 @@
         "clarify": "What's been worrying you or playing on your mind? It could be school stress, family stuff, friend drama, money worries, health concerns, or thoughts about your future. It's okay to share what's bothering you.",
         "support": "Thanks for trusting me with your worries. It takes courage to talk about what's bothering us. Remember, having worries is normal - everyone has them.",
         "normalize": "It sounds like you're dealing with some real challenges. Many young people worry about similar things - you're not alone in feeling this way.",
+        "offer_choice": "I understand if it's hard to talk about worries right now. Would you like to keep thinking about what's on your mind, or shall we move on to yarn about your goals instead?",
+        "acknowledge_move": "That's completely okay. Sometimes we need time before we can talk about certain things.",
         "examples": "Worries might include school pressure, family stress, friendship problems, money troubles, health concerns, feeling different, or uncertainty about the future."
     },
     "goals": {
         "prompt": "You've shared your support people, your strengths, and what's on your mind. Now let's talk about your goals - where you want to head. What's one thing you'd like to work towards? It could be something big like finishing school or getting a job, or something smaller like improving a skill or fixing a relationship. What matters to you?",
         "clarify": "What's one thing you'd like to achieve or work towards? It could be anything - finishing Year 12, getting fitter, learning something new, improving relationships, finding a job, or just feeling better about yourself. What would make you proud?",
         "encourage": "Having goals gives us direction and hope. Even small steps towards what we want can make a big difference. What's one thing you'd like to see change or improve in your life?",
+        "offer_choice": "I can see thinking about goals might be challenging right now. Would you like to spend more time on this, or are you ready to hear what we've talked about today?",
+        "acknowledge_move": "That's perfectly fine. Sometimes goals become clearer as we go along.",
         "examples": "Goals might include finishing school, getting a job, improving your health, learning new skills, fixing relationships, saving money, or feeling more confident about yourself.",
         "affirm": "That's a great goal to work towards. Remember, you have support people and strengths to help you get there."
     },

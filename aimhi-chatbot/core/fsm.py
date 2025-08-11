@@ -20,6 +20,14 @@ class ChatBotFSM:
             'worries': None,
             'goals': None
         }
+        
+        # Track attempts for progressive fallback
+        self.attempts = {
+            'support_people': 0,
+            'strengths': 0,
+            'worries': 0,
+            'goals': 0
+        }
     
     def save_response(self, response):
         """Save user response for current state"""
@@ -33,3 +41,20 @@ class ChatBotFSM:
     def get_all_responses(self):
         """Get all user responses"""
         return self.responses
+    
+    def increment_attempt(self):
+        """Increment attempt counter for current state"""
+        if self.state in self.attempts:
+            self.attempts[self.state] += 1
+    
+    def get_attempt_count(self):
+        """Get attempt count for current state"""
+        return self.attempts.get(self.state, 0)
+    
+    def should_offer_choice(self):
+        """Check if we should offer user choice to move on"""
+        return self.get_attempt_count() == 2  # After second failed attempt
+    
+    def should_force_advance(self):
+        """Check if we should force advance after multiple attempts"""
+        return self.get_attempt_count() >= 3  # After third failed attempt
