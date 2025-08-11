@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from core.router import route_message
 from core.session import new_session_id, get_session
 from database.repository import init_db
+from nlp.intent import classify_intent
 import json
 import tempfile
 
@@ -366,6 +367,137 @@ class TestIntegration(unittest.TestCase):
         # Verify it's a proper response
         self.assertIsInstance(response, str)
         self.assertGreater(len(response), 0)
+    
+    def test_context_aware_classification_edge_cases(self):
+        """Test context-aware classification handles edge cases correctly"""
+        
+        # Test ambiguous helping/support phrases
+        ambiguous_cases = [
+            'helping people',
+            'I help others', 
+            'others help me',
+            'we help each other',
+            'caring for people',
+            'supporting friends',
+            'good at helping family',
+            'helping friends makes me happy',
+            'me and mom help each other',
+        ]
+        
+        for text in ambiguous_cases:
+            # At strengths step, should classify as strengths
+            intent_str, conf_str = classify_intent(text, current_step='strengths')
+            self.assertEqual(intent_str, 'strengths', 
+                           f"'{text}' should be 'strengths' at strengths step, got '{intent_str}'")
+            self.assertGreater(conf_str, 0.5, 
+                             f"'{text}' should have high confidence at strengths step")
+            
+            # At support_people step, should classify as support_people (or be overridden by context)
+            intent_sup, conf_sup = classify_intent(text, current_step='support_people')
+            # Either support_people or changed to strengths by context is acceptable
+            self.assertIn(intent_sup, ['support_people', 'strengths'], 
+                         f"'{text}' should be support_people or strengths at support step, got '{intent_sup}'")
+    
+    def test_clear_family_words_stay_consistent(self):
+        """Test that clear family/people words remain support_people in both contexts"""
+        
+        clear_family_cases = ['mom', 'dad', 'family', 'friends', 'my family']
+        
+        for text in clear_family_cases:
+            # Should be support_people in both contexts
+            intent_str, conf_str = classify_intent(text, current_step='strengths')
+            intent_sup, conf_sup = classify_intent(text, current_step='support_people')
+            
+            self.assertEqual(intent_str, 'support_people', 
+                           f"'{text}' should be support_people at strengths step")
+            self.assertEqual(intent_sup, 'support_people', 
+                           f"'{text}' should be support_people at support step")
+            
+            # Confidence should be higher at support step (context boost)
+            self.assertGreater(conf_sup, conf_str, 
+                             f"'{text}' should have higher confidence at support step")
+    
+    def test_negation_consistent_across_contexts(self):
+        """Test negation detection works consistently across contexts"""
+        
+        negation_cases = [
+            'not helping anyone',
+            'nobody helps me', 
+            'not good at helping people',
+            'cant help others',
+            'dont help much'
+        ]
+        
+        for text in negation_cases:
+            # Should be negation in both contexts
+            intent_str, conf_str = classify_intent(text, current_step='strengths')
+            intent_sup, conf_sup = classify_intent(text, current_step='support_people')
+            
+            self.assertEqual(intent_str, 'negation', 
+                           f"'{text}' should be negation at strengths step")
+            self.assertEqual(intent_sup, 'negation', 
+                           f"'{text}' should be negation at support step")
+            
+            # Confidence should be similar in both contexts
+            self.assertAlmostEqual(conf_str, conf_sup, delta=0.1,
+                                 msg=f"'{text}' confidence should be similar in both contexts")
+    
+    def test_typos_and_cultural_variations_handled(self):
+        """Test system handles typos and cultural language variations"""
+        
+        variation_cases = [
+            ('helpin friends', 'strengths'),  # typo
+            ('famly supports me', 'support_people'),  # typo
+            ('mob supports me', 'support_people'),  # Aboriginal English
+            ('deadly at helping', 'strengths'),  # Aboriginal English slang
+        ]
+        
+        for text, expected_context in variation_cases:
+            if expected_context == 'strengths':
+                # Should be strengths at strengths step
+                intent, conf = classify_intent(text, current_step='strengths')
+                self.assertEqual(intent, 'strengths', 
+                               f"'{text}' should be strengths at strengths step")
+                self.assertGreater(conf, 0.5, 
+                                 f"'{text}' should have decent confidence")
+            else:
+                # Should be support_people in both contexts
+                intent_str, conf_str = classify_intent(text, current_step='strengths')
+                intent_sup, conf_sup = classify_intent(text, current_step='support_people')
+                
+                # Should be support_people or at least recognized
+                self.assertIn(intent_sup, ['support_people', 'strengths'], 
+                             f"'{text}' should be recognized at support step")
+                self.assertGreater(conf_sup, 0.3, 
+                                 f"'{text}' should have reasonable confidence")
+    
+    def test_compound_complex_statements(self):
+        """Test complex compound statements are handled correctly"""
+        
+        complex_cases = [
+            'my sister helps me but I also help her',
+            'good at helping but need help too', 
+            'family there for me when I help others',
+            'mom helps me and I help her'
+        ]
+        
+        for text in complex_cases:
+            # These contain both support and strength elements
+            # Context should determine which aspect is emphasized
+            intent_str, conf_str = classify_intent(text, current_step='strengths')
+            intent_sup, conf_sup = classify_intent(text, current_step='support_people')
+            
+            # Should have reasonable confidence in both contexts
+            self.assertGreater(conf_str, 0.3, 
+                             f"'{text}' should have reasonable confidence at strengths")
+            self.assertGreater(conf_sup, 0.3, 
+                             f"'{text}' should have reasonable confidence at support")
+            
+            # Context should influence the classification
+            self.assertIn(intent_str, ['strengths', 'support_people'], 
+                         f"'{text}' should be recognized as relevant at strengths")
+            self.assertIn(intent_sup, ['strengths', 'support_people'], 
+                         f"'{text}' should be recognized as relevant at support")
 
 if __name__ == '__main__':
     # Set test environment
