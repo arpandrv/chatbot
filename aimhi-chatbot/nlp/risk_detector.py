@@ -46,10 +46,33 @@ def contains_risk(text):
     text_lower = text.lower()
     doc = nlp(text_lower)
     
-    # Method 1: Check exact phrase matches
+    # Method 1: Check exact phrase matches with context validation
     matches = matcher(doc)
     if len(matches) > 0:
-        return True
+        # For each match, check if it's in a concerning context
+        for match_id, start, end in matches:
+            matched_phrase = doc[start:end].text.lower()
+            
+            # Get surrounding context (10 words before and after)
+            context_start = max(0, start - 10)
+            context_end = min(len(doc), end + 10)
+            context_text = doc[context_start:context_end].text.lower()
+            
+            # Check if this is a false positive based on positive context
+            positive_indicators = [
+                'help others', 'help people', 'help more people', 'help my friends',
+                'helping others', 'helping people', 'helping my friends', 
+                'want to help', 'like to help', 'good at helping', 'love helping',
+                'help out', 'help family', 'help community', 'volunteer', 'support others'
+            ]
+            
+            # If matched phrase is "help" related, check for positive context
+            if any(word in matched_phrase for word in ['help', 'helping']):
+                if any(positive in context_text for positive in positive_indicators):
+                    continue  # Skip this match, it's positive context
+            
+            # If we get here, it's likely a genuine risk indicator
+            return True
     
     # Method 2: Fuzzy matching for common misspellings
     # Check critical phrases with fuzzy matching (threshold 80% for longer, 75% for short)
@@ -59,7 +82,14 @@ def contains_risk(text):
     
     for phrase in critical_phrases:
         threshold = 75 if len(phrase) < 10 else 80
-        if fuzz.partial_ratio(phrase, text_lower) > threshold:
+        ratio = fuzz.partial_ratio(phrase, text_lower)
+        if ratio > threshold:
+            # Additional validation for fuzzy matches to avoid false positives
+            if phrase == 'want to die':
+                # Specific check for "want to die" - ensure it's actually about dying
+                if 'help' in text_lower or 'support' in text_lower or 'people' in text_lower:
+                    # Skip this match if it's about helping others
+                    continue
             return True
     
     # Method 3: Check individual tokens for critical words

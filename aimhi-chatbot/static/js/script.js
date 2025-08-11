@@ -3,14 +3,36 @@ let sessionId = null;
 // Add message to chat
 const addMessage = (sender, text, isHTML = false) => {
     const messages = document.getElementById('chatMessages');
-    const messageDiv = document.createElement('div');
-    messageDiv.classList.add('chat-message', `${sender}-message`);
     
-    if (isHTML) {
-        messageDiv.innerHTML = text;
+    // Create message wrapper
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message', sender);
+    
+    // Create avatar
+    const avatarDiv = document.createElement('div');
+    avatarDiv.classList.add('message-avatar');
+    if (sender === 'bot') {
+        avatarDiv.textContent = '🌟';
     } else {
-        messageDiv.textContent = text;
+        avatarDiv.textContent = '👤';
     }
+    
+    // Create message bubble
+    const bubbleDiv = document.createElement('div');
+    bubbleDiv.classList.add('message-bubble');
+    
+    const messageParagraph = document.createElement('p');
+    if (isHTML) {
+        messageParagraph.innerHTML = text;
+    } else {
+        messageParagraph.textContent = text;
+    }
+    
+    bubbleDiv.appendChild(messageParagraph);
+    
+    // Assemble the message
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(bubbleDiv);
     
     messages.appendChild(messageDiv);
     messages.scrollTop = messages.scrollHeight;

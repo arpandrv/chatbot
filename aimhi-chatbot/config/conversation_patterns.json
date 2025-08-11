@@ -1,0 +1,362 @@
+{
+    "welcome": {
+        "greetings": {
+            "patterns": [
+                "hi", "hello", "hey", "hi there", "hello there", "hey there",
+                "g'day", "gday", "good day", "howdy", "greetings",
+                "yo", "sup", "what's up", "whats up", "wassup",
+                "good morning", "good afternoon", "good evening",
+                "hey mate", "hi mate", "hello mate"
+            ],
+            "intent": "greeting"
+        },
+        "identity_questions": {
+            "patterns": [
+                "who are you", "what's your name", "whats your name",
+                "who am i talking to", "who is this", "what are you",
+                "tell me about yourself", "introduce yourself",
+                "are you a bot", "are you a chatbot", "are you real",
+                "are you yarn", "is this yarn"
+            ],
+            "intent": "identity_question"
+        },
+        "help_questions": {
+            "patterns": [
+                "how can you help me", "can you help me", "what can you do",
+                "what do you do", "what can you do for me", "how does this work",
+                "what's this about", "whats this about", "why are you here",
+                "what are you here for", "what kind of help", "can you support me"
+            ],
+            "intent": "help_question"
+        },
+        "readiness": {
+            "patterns": [
+                "i'm ready", "im ready", "ready", "let's start", "lets start",
+                "let's go", "lets go", "start", "begin", "yes", "yeah", "yep",
+                "sure", "okay", "ok", "alright", "sounds good", "let's do it",
+                "yeah ready", "yes ready", "ready to start", "ready to chat"
+            ],
+            "intent": "affirmation"
+        }
+    },
+    "feeling_response": {
+        "positive": {
+            "patterns": [
+                "good", "i'm good", "im good", "i'm okay", "im okay", "i'm fine",
+                "im fine", "i'm alright", "im alright", "doing well", "i'm doing well",
+                "great", "i'm great", "im great", "excellent", "fantastic",
+                "happy", "i'm happy", "im happy", "feeling good", "pretty good",
+                "not bad", "not too bad", "can't complain", "cant complain",
+                "all good", "i'm all good", "deadly", "i'm deadly"
+            ],
+            "intent": "feeling_positive"
+        },
+        "neutral": {
+            "patterns": [
+                "okay i guess", "ok i guess", "so-so", "so so", "meh",
+                "could be better", "could be worse", "i've been better",
+                "ive been better", "average", "normal", "same as always",
+                "nothing special", "just okay", "just ok", "getting by",
+                "surviving", "hanging in there", "managing", "i'm managing"
+            ],
+            "intent": "feeling_neutral"
+        },
+        "negative": {
+            "patterns": [
+                "not great", "not good", "i'm not great", "im not great",
+                "bad", "i'm bad", "im bad", "terrible", "awful", "horrible",
+                "sad", "i'm sad", "im sad", "depressed", "feeling low",
+                "feeling down", "struggling", "i'm struggling", "im struggling",
+                "having a hard time", "tough time", "difficult", "stressed",
+                "anxious", "worried", "scared", "angry", "frustrated",
+                "not well", "unwell", "sick", "tired", "exhausted"
+            ],
+            "intent": "feeling_negative"
+        },
+        "deflection": {
+            "patterns": [
+                "i don't want to talk about it", "i dont want to talk about it",
+                "i'd rather not say", "id rather not say", "none of your business",
+                "why do you want to know", "does it matter", "next question",
+                "skip", "pass", "i don't know", "i dont know", "not sure",
+                "hard to say", "complicated", "it's complicated", "its complicated"
+            ],
+            "intent": "deflection"
+        }
+    },
+    "support_people": {
+        "family": {
+            "patterns": [
+                "my family", "my parents", "my mum", "my mom", "my mother",
+                "my dad", "my father", "my parents", "mum and dad", "mom and dad",
+                "my sister", "my brother", "my siblings", "my sibling",
+                "my cousin", "my cousins", "my aunt", "my aunty", "my uncle",
+                "my grandma", "my grandmother", "my nan", "my nanna",
+                "my grandpa", "my grandfather", "my pop", "my grandparents",
+                "my mob", "my family mob", "the family", "extended family",
+                "my stepmother", "my stepfather", "my stepmum", "my stepdad",
+                "foster family", "foster parents", "my carer", "my carers"
+            ],
+            "intent": "support_people"
+        },
+        "friends": {
+            "patterns": [
+                "my friends", "my friend", "my best friend", "my bestie",
+                "my mates", "my mate", "close friends", "good friends",
+                "my crew", "my group", "my squad", "the boys", "the girls",
+                "school friends", "work friends", "online friends",
+                "childhood friends", "old friends", "new friends"
+            ],
+            "intent": "support_people"
+        },
+        "authority_figures": {
+            "patterns": [
+                "my teacher", "my teachers", "my counselor", "my counsellor",
+                "my therapist", "my psychologist", "my doctor", "my gp",
+                "my social worker", "my case worker", "my youth worker",
+                "my mentor", "my coach", "my boss", "my supervisor",
+                "my elder", "my elders", "community elder", "community leader",
+                "school counselor", "school counsellor", "guidance counselor"
+            ],
+            "intent": "support_people"
+        },
+        "romantic": {
+            "patterns": [
+                "my partner", "my boyfriend", "my girlfriend", "my bf", "my gf",
+                "my husband", "my wife", "my fiance", "my fiancee",
+                "someone special", "my person", "my significant other",
+                "the person i'm dating", "the person im dating",
+                "someone i'm seeing", "someone im seeing"
+            ],
+            "intent": "support_people"
+        },
+        "pets": {
+            "patterns": [
+                "my dog", "my cat", "my pet", "my pets", "my animals",
+                "my puppy", "my kitten", "my bird", "my fish",
+                "my horse", "my rabbit", "my guinea pig"
+            ],
+            "intent": "support_people"
+        },
+        "none": {
+            "patterns": [
+                "no one", "nobody", "i don't have anyone", "i dont have anyone",
+                "i have no one", "there's no one", "theres no one",
+                "i'm alone", "im alone", "by myself", "on my own",
+                "no support", "no one cares", "nobody cares",
+                "don't have support", "dont have support",
+                "i wish i had someone", "no family", "no friends"
+            ],
+            "intent": "no_support"
+        },
+        "multiple": {
+            "patterns": [
+                "my family and friends", "family and friends",
+                "lots of people", "many people", "a few people",
+                "different people", "various people", "several people",
+                "my support network", "people around me",
+                "everyone", "the whole mob", "my community"
+            ],
+            "intent": "support_people"
+        }
+    },
+    "strengths": {
+        "activities": {
+            "patterns": [
+                "playing sport", "playing sports", "sport", "sports",
+                "football", "footy", "soccer", "basketball", "netball",
+                "swimming", "running", "dancing", "singing", "music",
+                "playing music", "playing guitar", "playing piano",
+                "drawing", "painting", "art", "being creative", "creating",
+                "cooking", "baking", "gaming", "playing games", "video games",
+                "reading", "writing", "studying", "learning", "school work",
+                "helping others", "helping people", "helping family",
+                "helping friends", "helping my friends", "teaching",
+                "listening", "talking", "yarning", "storytelling",
+                "fixing things", "building things", "making things",
+                "working", "my job", "volunteering", "community work"
+            ],
+            "intent": "strengths"
+        },
+        "personal_qualities": {
+            "patterns": [
+                "i'm good at", "im good at", "good at", "great at",
+                "i'm funny", "im funny", "making people laugh", "sense of humor",
+                "i'm kind", "im kind", "being kind", "kindness",
+                "i'm caring", "im caring", "being caring", "caring for others",
+                "i'm loyal", "im loyal", "being loyal", "loyalty",
+                "i'm smart", "im smart", "being smart", "intelligence",
+                "i'm creative", "im creative", "being creative", "creativity",
+                "i'm strong", "im strong", "being strong", "strength",
+                "i'm brave", "im brave", "being brave", "courage",
+                "i'm patient", "im patient", "being patient", "patience",
+                "i'm honest", "im honest", "being honest", "honesty",
+                "good listener", "listening to others", "understanding people",
+                "problem solving", "solving problems", "figuring things out",
+                "staying positive", "being positive", "optimistic"
+            ],
+            "intent": "strengths"
+        },
+        "resilience": {
+            "patterns": [
+                "getting through tough times", "surviving", "resilience",
+                "bouncing back", "not giving up", "keeping going",
+                "staying strong", "being strong", "handling stress",
+                "dealing with problems", "managing difficulties",
+                "overcoming challenges", "facing fears", "being brave",
+                "adapting", "being flexible", "rolling with punches"
+            ],
+            "intent": "strengths"
+        },
+        "none": {
+            "patterns": [
+                "nothing", "i'm not good at anything", "im not good at anything",
+                "i don't have strengths", "i dont have strengths",
+                "no strengths", "no talents", "not talented",
+                "useless", "worthless", "i can't do anything", "i cant do anything",
+                "not good at anything", "bad at everything",
+                "i don't know", "i dont know", "can't think of any",
+                "cant think of any", "not sure", "no idea"
+            ],
+            "intent": "no_strengths"
+        }
+    },
+    "worries": {
+        "school": {
+            "patterns": [
+                "school", "school work", "homework", "assignments", "exams",
+                "tests", "grades", "marks", "failing", "not passing",
+                "teachers", "classmates", "bullying", "being bullied",
+                "fitting in", "making friends", "peer pressure",
+                "year 12", "hsc", "vce", "finishing school", "dropping out",
+                "choosing subjects", "university", "uni", "tafe", "college",
+                "what to study", "career", "future studies"
+            ],
+            "intent": "worries"
+        },
+        "family": {
+            "patterns": [
+                "family problems", "family issues", "family stress",
+                "parents fighting", "parents arguing", "divorce", "separation",
+                "family breaking up", "family violence", "domestic violence",
+                "sick family member", "family illness", "family death",
+                "family expectations", "family pressure", "disappointing family",
+                "family responsibilities", "looking after siblings",
+                "looking after family", "family conflict", "family drama"
+            ],
+            "intent": "worries"
+        },
+        "relationships": {
+            "patterns": [
+                "relationship problems", "relationship issues", "breakup",
+                "breaking up", "boyfriend problems", "girlfriend problems",
+                "friendship problems", "losing friends", "friend drama",
+                "loneliness", "feeling lonely", "being alone", "no friends",
+                "trust issues", "betrayal", "being hurt", "heartbreak",
+                "jealousy", "cheating", "communication problems"
+            ],
+            "intent": "worries"
+        },
+        "future": {
+            "patterns": [
+                "my future", "the future", "what will happen", "uncertainty",
+                "don't know what to do", "dont know what to do", "no direction",
+                "finding a job", "getting a job", "employment", "career",
+                "money", "finances", "paying bills", "rent", "housing",
+                "independence", "moving out", "adulting", "growing up",
+                "life goals", "purpose", "meaning", "what's the point",
+                "whats the point"
+            ],
+            "intent": "worries"
+        },
+        "health": {
+            "patterns": [
+                "health problems", "health issues", "being sick", "illness",
+                "mental health", "depression", "anxiety", "stress", "panic",
+                "sleeping problems", "insomnia", "can't sleep", "cant sleep",
+                "eating problems", "weight", "body image", "self-esteem",
+                "addiction", "drugs", "alcohol", "smoking", "substance use",
+                "self-harm", "hurting myself", "suicidal thoughts"
+            ],
+            "intent": "worries"
+        },
+        "none": {
+            "patterns": [
+                "nothing", "no worries", "i'm not worried", "im not worried",
+                "nothing worrying me", "all good", "everything's fine",
+                "everythings fine", "no problems", "no issues", "no stress",
+                "i don't want to talk about it", "i dont want to talk about it",
+                "rather not say", "private", "personal", "skip this"
+            ],
+            "intent": "no_worries"
+        }
+    },
+    "goals": {
+        "education": {
+            "patterns": [
+                "finish school", "complete year 12", "graduate", "graduation",
+                "pass my exams", "get good grades", "improve grades",
+                "go to university", "go to uni", "go to tafe", "further study",
+                "learn something new", "learn a skill", "get qualified",
+                "get a degree", "get a certificate", "get a diploma",
+                "study", "education", "training", "apprenticeship"
+            ],
+            "intent": "goals"
+        },
+        "career": {
+            "patterns": [
+                "get a job", "find work", "find a job", "employment",
+                "start a career", "career goals", "dream job", "good job",
+                "make money", "earn money", "financial stability",
+                "start a business", "be my own boss", "entrepreneur",
+                "promotion", "better position", "career advancement",
+                "work experience", "internship", "volunteer work"
+            ],
+            "intent": "goals"
+        },
+        "personal": {
+            "patterns": [
+                "be happy", "be happier", "happiness", "feel better",
+                "improve myself", "self-improvement", "personal growth",
+                "be healthier", "get fit", "lose weight", "gain weight",
+                "quit smoking", "quit drinking", "quit drugs", "get clean",
+                "be more confident", "confidence", "self-esteem",
+                "be independent", "move out", "my own place", "freedom",
+                "travel", "see the world", "adventure", "new experiences"
+            ],
+            "intent": "goals"
+        },
+        "relationships": {
+            "patterns": [
+                "make friends", "more friends", "better friendships",
+                "find love", "find a partner", "relationship", "dating",
+                "fix relationships", "improve relationships", "reconnect",
+                "family relationships", "be closer to family", "help family",
+                "be a better person", "be kinder", "help others", "give back",
+                "community involvement", "make a difference", "contribute"
+            ],
+            "intent": "goals"
+        },
+        "skills": {
+            "patterns": [
+                "learn to drive", "get license", "drivers license",
+                "learn a language", "learn an instrument", "learn to code",
+                "improve skills", "develop skills", "get better at",
+                "play sport better", "join a team", "compete",
+                "creative goals", "write a book", "make music", "create art",
+                "build something", "make something", "achieve something"
+            ],
+            "intent": "goals"
+        },
+        "none": {
+            "patterns": [
+                "no goals", "don't have goals", "dont have goals",
+                "i don't know", "i dont know", "not sure", "haven't thought",
+                "havent thought", "no idea", "nothing", "can't think",
+                "cant think", "too hard", "too difficult", "impossible",
+                "what's the point", "whats the point", "why bother"
+            ],
+            "intent": "no_goals"
+        }
+    }
+}
