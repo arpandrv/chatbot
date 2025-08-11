@@ -1,0 +1,12 @@
+{
+    "risk_phrases": [
+        {"phrase": "suicide", "variants": ["suicidal", "kill myself"]},
+        {"phrase": "self harm", "variants": ["hurt myself", "cutting"]},
+        {"phrase": "end it all", "variants": ["end my life", "not worth living"]}
+    ],
+    "crisis_resources": {
+        "13YARN": "13 92 76",
+        "Lifeline": "13 11 14",
+        "Kids Helpline": "1800 55 1800"
+    }
+}

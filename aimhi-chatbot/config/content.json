@@ -1,0 +1,23 @@
+{
+    "welcome": {
+        "prompt": "Welcome to the AIMhi-Y Supportive Yarn Chatbot. This is a safe space to yarn about your wellbeing. To start, just say hi."
+    },
+    "support_people": {
+        "prompt": "Who are the people in your life who support you? This could be family, friends, or community."
+    },
+    "strengths": {
+        "prompt": "What are you good at? What are some of the things you are proud of?"
+    },
+    "worries": {
+        "prompt": "What's been on your mind lately? What are some of the things that have been worrying you?"
+    },
+    "goals": {
+        "prompt": "What's one thing you'd like to work towards? It can be a small step."
+    },
+    "summary": {
+        "prompt": "Thanks for sharing. You've talked about your support people, your strengths, and your goals. You're on a great path."
+    },
+    "fallback": {
+        "prompt": "Thanks for sharing. Let's keep focusing on the current step."
+    }
+}
