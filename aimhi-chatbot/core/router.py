@@ -54,7 +54,8 @@ def route_message(session_id, message):
 
     # Classify user intent and get expected intent for current step
     # Use original message for intent classification to preserve natural language patterns
-    intent, confidence = classify_intent(message)
+    # Pass current FSM state for context-aware classification
+    intent, confidence = classify_intent(message, current_step=fsm.state)
     expected_intent = get_intent_for_step(fsm.state)
     
     # Handle conversation flow with intent validation
