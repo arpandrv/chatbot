@@ -1,23 +1,70 @@
+
 {
     "welcome": {
-        "prompt": "Welcome to the AIMhi-Y Supportive Yarn Chatbot. This is a safe space to yarn about your wellbeing. To start, just say hi."
+        "prompt": "G'day! Welcome to Yarn - I'm here to have a supportive chat using the Stay Strong approach. This is your safe space to yarn about your wellbeing and strength. Ready to start our yarn together?",
+        "alternatives": [
+            "Hello there! I'm Yarn, and I'm here to support you through the Stay Strong 4-step approach. Ready to have a yarn?",
+            "Hey! Thanks for dropping by. I'm here to yarn with you about your strengths and support people. Shall we get started?"
+        ]
     },
     "support_people": {
-        "prompt": "Who are the people in your life who support you? This could be family, friends, or community."
+        "prompt": "Let's yarn about your support people - the mob who've got your back. Who are the people in your life who support you? This might be family, friends, Elders, teachers, or community members. Even if it feels like there aren't many, let's think about who cares about you.",
+        "clarify": "Tell me about the people in your life - family, friends, teachers, Elders, or anyone who's been there for you. Even if it's just one person, that's a good start.",
+        "no_support": "That sounds really tough, and I hear you. Sometimes support can come from unexpected places - maybe a teacher who's been kind, an Elder in your community, a cousin, or even people online. What about anyone who's shown they care, even in small ways?",
+        "encourage": "It's great that you have people who support you. Having that connection to family, friends, or community is really important for your wellbeing.",
+        "examples": "Support people could be your mum, dad, siblings, cousins, aunties, uncles, nan, pop, friends, teachers, youth workers, or community members who care about you."
     },
     "strengths": {
-        "prompt": "What are you good at? What are some of the things you are proud of?"
+        "prompt": "Now let's yarn about your strengths - the things that make you deadly! What are you good at? What makes you proud? This could be anything - maybe you're good at sport, music, art, helping others, making people laugh, being a good friend, or getting through tough times. Everyone has strengths, even if they're hard to see sometimes.",
+        "clarify": "What are you good at? It could be anything - sports, music, art, cooking, gaming, being kind to others, making people laugh, or even just surviving tough times. What would your support people say you're good at?",
+        "encourage": "Everyone has strengths, even when they're hard to see. Maybe you're good at listening to your friends, you're creative, you're strong for getting through difficult times, or you have skills you haven't even noticed yet. What's one small thing you do well?",
+        "examples": "Your strengths might be playing footy, drawing, singing, dancing, gaming, cooking, helping family, being loyal to friends, or having the strength to keep going when things get tough.",
+        "affirm": "Those are some deadly strengths! It's important to recognize what you're good at and what makes you special."
     },
     "worries": {
-        "prompt": "What's been on your mind lately? What are some of the things that have been worrying you?"
+        "prompt": "Thanks for sharing your strengths with me. Now, if you're comfortable, let's yarn about what's been on your mind - your worries. What's been weighing on you lately? It could be school, family, friends, the future, or anything else. Sometimes talking about our worries helps lighten the load.",
+        "clarify": "What's been worrying you or playing on your mind? It could be school stress, family stuff, friend drama, money worries, health concerns, or thoughts about your future. It's okay to share what's bothering you.",
+        "support": "Thanks for trusting me with your worries. It takes courage to talk about what's bothering us. Remember, having worries is normal - everyone has them.",
+        "normalize": "It sounds like you're dealing with some real challenges. Many young people worry about similar things - you're not alone in feeling this way.",
+        "examples": "Worries might include school pressure, family stress, friendship problems, money troubles, health concerns, feeling different, or uncertainty about the future."
     },
     "goals": {
-        "prompt": "What's one thing you'd like to work towards? It can be a small step."
+        "prompt": "You've shared your support people, your strengths, and what's on your mind. Now let's talk about your goals - where you want to head. What's one thing you'd like to work towards? It could be something big like finishing school or getting a job, or something smaller like improving a skill or fixing a relationship. What matters to you?",
+        "clarify": "What's one thing you'd like to achieve or work towards? It could be anything - finishing Year 12, getting fitter, learning something new, improving relationships, finding a job, or just feeling better about yourself. What would make you proud?",
+        "encourage": "Having goals gives us direction and hope. Even small steps towards what we want can make a big difference. What's one thing you'd like to see change or improve in your life?",
+        "examples": "Goals might include finishing school, getting a job, improving your health, learning new skills, fixing relationships, saving money, or feeling more confident about yourself.",
+        "affirm": "That's a great goal to work towards. Remember, you have support people and strengths to help you get there."
     },
     "summary": {
-        "prompt": "Thanks for sharing. You've talked about your support people, your strengths, and your goals. You're on a great path."
+        "prompt": "Thanks for yarning with me today. It takes strength to talk about these things, and you should feel proud for sharing.",
+        "thanks": "Thank you for having this yarn with me today. You've shown real strength by talking about your support people, recognizing your abilities, sharing your worries, and thinking about your goals. That takes courage.",
+        "followup": "Would you like to yarn about any of these topics more, or is there anything else on your mind? I'm here if you need to talk.",
+        "closing": "Remember - you have people who support you and strengths to build on as you work towards your goals. You've got this, and you don't have to face challenges alone. Take care of yourself."
     },
     "fallback": {
-        "prompt": "Thanks for sharing. Let's keep focusing on the current step."
+        "prompt": "Thanks for sharing that with me. Let's keep yarning about the current step we're on.",
+        "redirect": "I want to make sure we cover everything important. Let's focus on what we're talking about right now.",
+        "supportive": "I hear you. Let's keep our yarn going and focus on this part of your story."
+    },
+    "encouragement": [
+        "You're doing great by talking about this.",
+        "That takes real courage to share.",
+        "I can hear your strength in what you're saying.",
+        "Thanks for trusting me with that.",
+        "You should feel proud for opening up about this.",
+        "That's a really important thing to recognize about yourself.",
+        "You're showing real wisdom by thinking about this."
+    ],
+    "transitions": {
+        "to_strengths": "Now that I know about your support people, let's yarn about your strengths.",
+        "to_worries": "Thanks for sharing your strengths. Now, if you're ready, let's talk about what's been on your mind.",
+        "to_goals": "You've been really open about your worries. Now let's think about where you want to go from here.",
+        "to_summary": "You've shared so much with me today. Let me tell you what I've heard."
+    },
+    "validation": {
+        "support_shared": "It's wonderful that you have people who care about you. That connection is really important.",
+        "strengths_shared": "Those are some real strengths you've got there. It's important to recognize what makes you special.",
+        "worries_shared": "Thanks for trusting me with your worries. It shows courage to talk about what's bothering you.",
+        "goals_shared": "That's a meaningful goal. Having something to work towards can give you direction and hope."
     }
 }
