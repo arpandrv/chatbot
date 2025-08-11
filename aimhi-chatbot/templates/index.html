@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yarn - Your Supportive Companion | AIMhi Stay Strong</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+
+<body>
+    <div class="chat-container" role="main" aria-label="Chat interface">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="bot-info">
+                <div class="bot-avatar" aria-hidden="true">🌟</div>
+                <div class="bot-details">
+                    <h1>Yarn</h1>
+                    <div class="bot-status">
+                        <span class="status-dot" aria-hidden="true"></span>
+                        <span>Here to yarn with you</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="get-help-btn" onclick="showHelp()" aria-label="Get help">
+                <i class="bi bi-life-preserver"></i>
+                Get Help
+            </button>
+        </header>
+
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="Chat messages">
+            <div class="welcome-message">
+                <div class="welcome-icon">👋</div>
+                <h2>G'day! I'm Yarn</h2>
+                <p>I'm here to have a yarn with you - to listen and help you think about your strengths and what matters
+                    to you.</p>
+                <p>This is a safe space where we can talk about whatever's on your mind. No judgment, just support.</p>
+
+                <div class="disclaimer-box">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <span>This is not a crisis service. If you need immediate help, please click the "Get Help" button
+                        above for 24/7 support.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-container">
+            <div class="quick-actions" id="quickActions">
+                <button class="quick-action-btn" onclick="sendQuickMessage('Hi')">Hi 👋</button>
+                <button class="quick-action-btn" onclick="sendQuickMessage('Ready to chat')">Ready to chat</button>
+                <button class="quick-action-btn" onclick="sendQuickMessage('Not sure what to say')">Not sure what to
+                    say</button>
+            </div>
+
+            <div class="input-group-custom">
+                <input type="text" id="messageInput" placeholder="Type your message here..."
+                    aria-label="Type your message" autocomplete="off" maxlength="500">
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Send message">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="help-modal" id="helpModal" role="dialog" aria-labelledby="helpTitle" aria-hidden="true">
+        <div class="help-content">
+            <div class="help-header">
+                <h3 id="helpTitle">24/7 Support Services</h3>
+                <button class="close-help" onclick="hideHelp()" aria-label="Close help">×</button>
+            </div>
+            <div class="help-numbers">
+                <div class="help-item">
+                    <strong>13YARN</strong>
+                    <a href="tel:139276">13 92 76</a>
+                </div>
+                <div class="help-item">
+                    <strong>Lifeline</strong>
+                    <a href="tel:131114">13 11 14</a>
+                </div>
+                <div class="help-item">
+                    <strong>Kids Helpline</strong>
+                    <a href="tel:1800551800">1800 55 1800</a>
+                </div>
+            </div>
+            <p class="help-footer">
+                These services are free, confidential, and available 24/7. They're here to listen and support you.
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>
