@@ -27,13 +27,22 @@ def chat():
     
     session = get_session(session_id)
     fsm = session['fsm']
-    reply = route_message(session_id, message)
+    
+    # Get reply and debug info from router
+    result = route_message(session_id, message)
+    if isinstance(result, tuple):
+        reply, debug_info = result
+    else:
+        # Fallback for old format
+        reply = result
+        debug_info = {}
     
     return jsonify({
         'reply': reply,
         'session_id': session_id,
         'state': fsm.state,
-        'flags': {}
+        'flags': {},
+        'debug': debug_info
     })
 
 @app.route('/health')

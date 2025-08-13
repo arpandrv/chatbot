@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIMhi Chatbot - Complete System Flow</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+        }
+        .diagram-section {
+            margin-bottom: 50px;
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+        }
+        h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .icon {
+            font-size: 1.5em;
+        }
+        .mermaid {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .legend {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #dee2e6;
+        }
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .metric-label {
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AIMhi Chatbot - System Architecture</h1>
+        <div class="subtitle">Complete Request Flow & State Management</div>
+
+        <!-- High-Level Architecture -->
+        <div class="diagram-section">
+            <h2><span class="icon">🏗️</span> High-Level Architecture</h2>
+            <div class="mermaid">
+                graph TB
+                    subgraph "Frontend"
+                        U[👤 User] 
+                        B[🌐 Browser]
+                        JS[📜 script.js]
+                    end
+                    
+                    subgraph "Backend Flask"
+                        APP[🐍 app.py]
+                        R[🚦 router.py]
+                        FSM[🎯 FSM State Machine]
+                    end
+                    
+                    subgraph "NLP Pipeline"
+                        RISK[⚠️ Risk Detector]
+                        INTENT[🧠 Intent Classifier]
+                        SENT[😊 Sentiment Analysis]
+                    end
+                    
+                    subgraph "Data Layer"
+                        SESS[💾 Session Store]
+                        DB[(🗄️ SQLite DB)]
+                        PROF[👥 User Profile]
+                    end
+                    
+                    U -->|Types message| B
+                    B -->|AJAX POST| APP
+                    APP -->|route_message| R
+                    R -->|Priority 1| RISK
+                    R -->|Priority 2| FSM
+                    R -->|Classify| INTENT
+                    R -->|Analyze| SENT
+                    FSM -->|Store| SESS
+                    R -->|Save| DB
+                    R -->|Update| PROF
+                    R -->|JSON Response| APP
+                    APP -->|Reply| B
+                    B -->|Display| U
+
+                    style U fill:#e1f5fe
+                    style RISK fill:#ffebee
+                    style FSM fill:#f3e5f5
+                    style DB fill:#e8f5e9
+            </div>
+        </div>
+
+        <!-- Message Processing Pipeline -->
+        <div class="diagram-section">
+            <h2><span class="icon">🔄</span> Message Processing Pipeline</h2>
+            <div class="mermaid">
+                flowchart LR
+                    MSG[📨 User Message] --> NORM[Normalize Text]
+                    NORM --> RISK{🚨 Risk Check}
+                    RISK -->|Detected| CRISIS[Crisis Resources]
+                    RISK -->|Safe| STATE{FSM State?}
+                    
+                    STATE -->|Welcome| W_LOGIC[Welcome Logic]
+                    STATE -->|Support| S_LOGIC[Support Logic]
+                    STATE -->|Strengths| ST_LOGIC[Strengths Logic]
+                    STATE -->|Worries| WO_LOGIC[Worries Logic]
+                    STATE -->|Goals| G_LOGIC[Goals Logic]
+                    STATE -->|Summary| SUM_LOGIC[Summary Logic]
+                    
+                    W_LOGIC --> INTENT[Intent Classification]
+                    S_LOGIC --> INTENT
+                    ST_LOGIC --> INTENT
+                    WO_LOGIC --> INTENT
+                    G_LOGIC --> INTENT
+                    
+                    INTENT --> CONF{Confidence?}
+                    CONF -->|High| ADVANCE[✅ Advance State]
+                    CONF -->|Low| FALLBACK[🔄 Progressive Fallback]
+                    
+                    FALLBACK --> ATT{Attempts?}
+                    ATT -->|1| CLARIFY[Clarify Question]
+                    ATT -->|2| CHOICE[Offer Skip Choice]
+                    ATT -->|3+| FORCE[Force Advance]
+                    
+                    ADVANCE --> RESP[Generate Response]
+                    CLARIFY --> RESP
+                    CHOICE --> RESP
+                    FORCE --> RESP
+                    CRISIS --> RESP
+                    SUM_LOGIC --> RESP
+                    
+                    RESP --> RETURN[📤 Return to User]
+
+                    style RISK fill:#ffcdd2
+                    style CRISIS fill:#ff5252,color:#fff
+                    style ADVANCE fill:#c8e6c9
+                    style FALLBACK fill:#fff9c4
+            </div>
+        </div>
+
+        <!-- FSM State Transitions -->
+        <div class="diagram-section">
+            <h2><span class="icon">🎯</span> FSM State Machine Flow</h2>
+            <div class="mermaid">
+                stateDiagram-v2
+                    [*] --> Welcome: Session Start
+                    Welcome --> Support_People: User Engages
+                    Support_People --> Strengths: Valid Response / Force
+                    Strengths --> Worries: Valid Response / Force
+                    Worries --> Goals: Valid Response / Force
+                    Goals --> Summary: Valid Response / Force
+                    Summary --> [*]: Session End
+                    
+                    note right of Welcome
+                        Expects: Greeting
+                        or any engagement
+                    end note
+                    
+                    note right of Support_People
+                        Expects: Family, friends,
+                        support network mentions
+                        Fallback: 3 attempts
+                    end note
+                    
+                    note right of Strengths
+                        Expects: Skills, talents,
+                        things good at
+                        Fallback: 3 attempts
+                    end note
+                    
+                    note right of Worries
+                        Expects: Concerns,
+                        stress, problems
+                        Fallback: 3 attempts
+                    end note
+                    
+                    note right of Goals
+                        Expects: Future plans,
+                        aspirations
+                        Fallback: 3 attempts
+                    end note
+                    
+                    note right of Summary
+                        Shows: Conversation recap
+                        Optional: LLM handoff
+                    end note
+            </div>
+        </div>
+
+        <!-- Intent Classification Layers -->
+        <div class="diagram-section">
+            <h2><span class="icon">🧠</span> 6-Layer Intent Classification System</h2>
+            <div class="mermaid">
+                graph TD
+                    INPUT[User Input] --> L1[Layer 1: Strong Patterns]
+                    L1 --> L2[Layer 2: Negation Check]
+                    L2 --> L3[Layer 3: Keywords + Regex]
+                    L3 --> L4[Layer 4: Context Boosting]
+                    L4 --> L5[Layer 5: Negation Override]
+                    L5 --> L6[Layer 6: Final Scoring]
+                    
+                    L1 -->|+0.8| SCORE[Intent Scores]
+                    L2 -->|Modify| SCORE
+                    L3 -->|+0.2-0.5| SCORE
+                    L4 -->|+0.3-0.7| SCORE
+                    L5 -->|×0.3| SCORE
+                    L6 --> OUTPUT{Best Intent}
+                    
+                    OUTPUT -->|confidence < 0.2| UNCLEAR[Unclear]
+                    OUTPUT -->|confidence ≥ 0.2| INTENT[Detected Intent]
+                    
+                    style L1 fill:#e3f2fd
+                    style L4 fill:#f3e5f5
+                    style OUTPUT fill:#e8f5e9
+            </div>
+        </div>
+
+        <!-- Risk Detection Flow -->
+        <div class="diagram-section">
+            <h2><span class="icon">⚠️</span> Risk Detection Pipeline</h2>
+            <div class="mermaid">
+                flowchart TD
+                    TEXT[Message Text] --> M1{Exact Phrase Match}
+                    M1 -->|Found| CTX{Check Context}
+                    CTX -->|Positive Context| SAFE[✅ Safe]
+                    CTX -->|Risk Context| RISK[🚨 Risk Detected]
+                    
+                    M1 -->|Not Found| M2{Fuzzy Match 80%}
+                    M2 -->|Match| RISK
+                    M2 -->|No Match| M3{Critical Tokens}
+                    M3 -->|Found| CTX2{Concerning Context?}
+                    CTX2 -->|Yes| RISK
+                    CTX2 -->|No| SAFE
+                    M3 -->|Not Found| SAFE
+                    
+                    RISK --> RESOURCES[Crisis Resources]
+                    RESOURCES --> PHONE[13YARN: 13 92 76]
+                    RESOURCES --> LIFE[Lifeline: 13 11 14]
+                    RESOURCES --> KID[Kids Helpline: 1800 55 1800]
+                    
+                    style RISK fill:#ffcdd2
+                    style SAFE fill:#c8e6c9
+                    style RESOURCES fill:#ff5252,color:#fff
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="diagram-section">
+            <h2><span class="icon">📊</span> System Performance Metrics</h2>
+            <div class="metrics">
+                <div class="metric-card">
+                    <div class="metric-value">&lt;500ms</div>
+                    <div class="metric-label">Rule-based Response</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">6</div>
+                    <div class="metric-label">FSM States</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">3</div>
+                    <div class="metric-label">Fallback Attempts</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">9</div>
+                    <div class="metric-label">Intent Types</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">Priority 1</div>
+                    <div class="metric-label">Risk Detection</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">Optional</div>
+                    <div class="metric-label">LLM Fallback</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Flow Legend -->
+        <div class="diagram-section">
+            <h2><span class="icon">📍</span> Data Flow Summary</h2>
+            <div class="note">
+                <strong>Critical Path:</strong> User Input → Risk Check → FSM State → Intent Classification → Response Generation → User Output
+            </div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #ffcdd2;"></div>
+                    <span>Risk/Safety Critical</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #c8e6c9;"></div>
+                    <span>Success Path</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #fff9c4;"></div>
+                    <span>Fallback/Recovery</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #e3f2fd;"></div>
+                    <span>Processing Layer</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #f3e5f5;"></div>
+                    <span>State Management</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#333',
+                primaryBorderColor: '#7c3aed',
+                lineColor: '#667eea',
+                secondaryColor: '#f3e5f5',
+                tertiaryColor: '#e8f5e9',
+                background: '#ffffff',
+                mainBkg: '#f8f9fa',
+                secondBkg: '#ffffff',
+                tertiaryBkg: '#e3f2fd'
+            },
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis',
+                nodeSpacing: 50,
+                rankSpacing: 50,
+                padding: 20
+            }
+        });
+    </script>
+</body>
+</html>

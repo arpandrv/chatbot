@@ -43,15 +43,34 @@ def create_summary(responses):
 def route_message(session_id, message):
     save_message(session_id, 'user', message)
     normalized_message = normalize_text(message)
+    
+    # Initialize debug info
+    debug_info = {
+        'original_message': message,
+        'normalized_message': normalized_message,
+        'risk_detected': False,
+        'fsm_state_before': None,
+        'fsm_state_after': None,
+        'intent_classification': {},
+        'user_sentiment': 'neutral',
+        'response_source': '',
+        'fallback_triggered': False,
+        'attempt_count': 0,
+        'profile_updates': {}
+    }
 
     # Priority 1: Risk detection
     if contains_risk(normalized_message):
         reply = get_crisis_resources()
         save_message(session_id, 'bot', json.dumps(reply))
-        return reply
+        debug_info['risk_detected'] = True
+        debug_info['response_source'] = 'crisis_resources'
+        return reply, debug_info
 
     session = get_session(session_id)
     fsm = session['fsm']
+    debug_info['fsm_state_before'] = fsm.state
+    debug_info['attempt_count'] = fsm.get_attempt_count()
 
     # Classify user intent and get expected intent for current step
     # Use original message for intent classification to preserve natural language patterns
@@ -59,8 +78,18 @@ def route_message(session_id, message):
     intent, confidence = classify_intent(message, current_step=fsm.state)
     expected_intent = get_intent_for_step(fsm.state)
     
+    debug_info['intent_classification'] = {
+        'detected_intent': intent,
+        'confidence': confidence,
+        'expected_intent': expected_intent
+    }
+    
     # Update user profile with interaction data
     profile_builder.update_profile(session_id, message, intent, confidence, fsm.state)
+    debug_info['profile_updates'] = {
+        'session_id': session_id,
+        'updated': True
+    }
     
     # Get user's sentiment for response tone matching
     user_sentiment = 'neutral'  # Simple default - could be enhanced
@@ -68,6 +97,7 @@ def route_message(session_id, message):
         user_sentiment = 'positive'
     elif any(word in message.lower() for word in ['bad', 'sad', 'worried', 'stressed', 'angry']):
         user_sentiment = 'negative'
+    debug_info['user_sentiment'] = user_sentiment
     
     # Handle conversation flow with intent validation
     if fsm.is_welcome():
@@ -75,15 +105,18 @@ def route_message(session_id, message):
         if intent == 'greeting' and confidence > 0.5:
             # First greeting - give varied welcome message, stay in welcome state
             reply = response_selector.get_response('welcome', 'greeting', session_id, user_sentiment)
+            debug_info['response_source'] = 'welcome_greeting'
         elif (intent in ['affirmation', 'worries'] or 
               (confidence > 0.3 and intent in ['greeting', 'affirmation', 'support_people', 'strengths', 'worries', 'goals']) or
               len(message.strip()) > 5):  # Any substantial response should advance
             # User is ready to proceed - advance to support_people
             fsm.next_step()
             reply = response_selector.get_response('welcome', 'ready_response', session_id, user_sentiment)
+            debug_info['response_source'] = 'welcome_advance_to_support'
         else:
             # Unclear or first visit - provide welcome message
             reply = response_selector.get_response('welcome', 'greeting', session_id)
+            debug_info['response_source'] = 'welcome_unclear_fallback'
     
     elif fsm.is_support_people():
         # Support people step - validate user provided support information
@@ -317,6 +350,10 @@ def route_message(session_id, message):
         # Fallback for unexpected states
         reply = content.get('fallback', {}).get('prompt', 
             "I'm not sure how to help with that right now. Let's focus on the current step.")
+        debug_info['response_source'] = 'unexpected_state_fallback'
+        debug_info['fallback_triggered'] = True
 
+    # Final debug info
+    debug_info['fsm_state_after'] = fsm.state
     save_message(session_id, 'bot', reply)
-    return reply
+    return reply, debug_info
