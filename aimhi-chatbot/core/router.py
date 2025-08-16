@@ -15,6 +15,7 @@ from nlp.risk_detector import contains_risk, get_crisis_resources
 from nlp.intent import classify_intent, get_intent_for_step
 from nlp.preprocessor import normalize_text
 from nlp.response_selector import VariedResponseSelector
+from nlp.sentiment import analyze_sentiment
 
 from database.repository import save_message
 response_selector = VariedResponseSelector()
@@ -92,12 +93,9 @@ def route_message(session_id, message):
     }
     
     # Get user's sentiment for response tone matching
-    user_sentiment = 'neutral'  # Simple default - could be enhanced
-    if any(word in message.lower() for word in ['good', 'great', 'happy', 'love', 'excited']):
-        user_sentiment = 'positive'
-    elif any(word in message.lower() for word in ['bad', 'sad', 'worried', 'stressed', 'angry']):
-        user_sentiment = 'negative'
+    user_sentiment, sentiment_confidence = analyze_sentiment(message)
     debug_info['user_sentiment'] = user_sentiment
+    debug_info['sentiment_confidence'] = sentiment_confidence
     
     # Handle conversation flow with intent validation
     if fsm.is_welcome():
