@@ -1,0 +1,476 @@
+1) support_people
+
+text,intent "my family",support_people
+text,intent "my friends support me",support_people
+text,intent "mum and dad back me",support_people
+text,intent "my sister is my rock",support_people
+text,intent "my brother helps heaps",support_people
+text,intent "my cousins are there for me",support_people
+text,intent "i talk to my auntie when i'm stressed",support_people
+text,intent "uncle gives solid advice",support_people
+text,intent "my nan and pop check in",support_people
+text,intent "my whole mob has my back",support_people
+text,intent "my best mate sarah",support_people
+text,intent "the girls from school help me",support_people
+text,intent "a teacher i trust",support_people
+text,intent "my youth worker is great",support_people
+text,intent "my partner listens",support_people
+text,intent "my girlfriend is supportive",support_people
+text,intent "the boys look out for me",support_people
+text,intent "people from the community centre",support_people
+text,intent "elders in my community guide me",support_people
+text,intent "my footy coach backs me",support_people
+text,intent "my therapist helps a lot",support_people
+text,intent "my counselor",support_people
+text,intent "my foster parents are kind",support_people
+text,intent "my work mates are supportive",support_people
+text,intent "the people i live with are good",support_people
+text,intent "my dog is always there for me lol",support_people
+text,intent "my church mob",support_people
+text,intent "my study group",support_people
+text,intent "my big sis is deadly support",support_people
+text,intent "my aunties check on me",support_people
+
+2) strengths
+
+text,intent "i'm good at sport",strengths
+text,intent "i'm a fast runner",strengths
+text,intent "i can play guitar",strengths
+text,intent "i love drawing",strengths
+text,intent "i'm creative",strengths
+text,intent "i'm a good friend",strengths
+text,intent "i'm loyal",strengths
+text,intent "i'm funny",strengths
+text,intent "i make people laugh",strengths
+text,intent "i'm kind",strengths
+text,intent "i help my family",strengths
+text,intent "i'm good at listening",strengths
+text,intent "i can sing pretty well",strengths
+text,intent "i'm proud of my art",strengths
+text,intent "i'm a hard worker",strengths
+text,intent "i'm good at cooking",strengths
+text,intent "i'm a great gamer",strengths
+text,intent "i can fix things",strengths
+text,intent "i'm resilient",strengths
+text,intent "i've been through a lot and kept going",strengths
+text,intent "i'm smart",strengths
+text,intent "i do alright at school",strengths
+text,intent "i help when people are sad",strengths
+text,intent "good with kids",strengths
+text,intent "i am a grate cook",strengths
+text,intent "im good at sportz",strengths
+text,intent "i can write stories",strengths
+text,intent "deadly at footy",strengths
+text,intent "i care for my siblings",strengths
+text,intent "i’m honest",strengths
+text,intent "i’m a solid yarn spinner",strengths
+text,intent "staying positive is my thing",strengths
+text,intent "i pick things up quick",strengths
+text,intent "i'm organized with money",strengths
+text,intent "i learn tech fast",strengths
+
+3) worries
+
+text,intent "i worry about school",worries
+text,intent "exams stress me out",worries
+text,intent "homework is too much",worries
+text,intent "i'm worried about my future",worries
+text,intent "anxious about getting a job",worries
+text,intent "money is a big stress",worries
+text,intent "family keeps fighting",worries
+text,intent "parents split up",worries
+text,intent "trouble with friends",worries
+text,intent "relationship drama",worries
+text,intent "feeling lonely a lot",worries
+text,intent "worried about my health",worries
+text,intent "my mental health isn't good",worries
+text,intent "feeling depressed lately",worries
+text,intent "bullying at school",worries
+text,intent "peer pressure sucks",worries
+text,intent "scared about what's next",worries
+text,intent "not sure what to do with life",worries
+text,intent "worried about my nan being sick",worries
+text,intent "got some helth problems",worries
+text,intent "failing a class maybe",worries
+text,intent "drama with my mates",worries
+text,intent "what people think of me",worries
+text,intent "worried about climate change",worries
+text,intent "world feels like a mess",worries
+text,intent "afraid i’ll let my mob down",worries
+text,intent "worried about rent",worries
+text,intent "worry i’ll lose my job",worries
+text,intent "unsafe at home sometimes",worries
+text,intent "i stress about transport and license",worries
+
+4) goals
+
+text,intent "i want to finish school",goals
+text,intent "my goal is to graduate",goals
+text,intent "i want to get a job",goals
+text,intent "find work i enjoy",goals
+text,intent "i want to go to uni",goals
+text,intent "i plan to study TAFE",goals
+text,intent "i want to learn an instrument",goals
+text,intent "be healthier",goals
+text,intent "get fit",goals
+text,intent "i want to be happy",goals
+text,intent "i hope to feel better",goals
+text,intent "improve my relationships",goals
+text,intent "fix things with my dad",goals
+text,intent "save money",goals
+text,intent "get my driver's license",goals
+text,intent "travel one day",goals
+text,intent "make my family proud",goals
+text,intent "be more confident",goals
+text,intent "start my own business",goals
+text,intent "learn my language",goals
+text,intent "connect with culture",goals
+text,intent "be a role model",goals
+text,intent "help my community",goals
+text,intent "move out of home",goals
+text,intent "get my own place",goals
+text,intent "get my apprenticeship",goals
+text,intent "my gole is to be happy",goals
+text,intent "get my Ls and Ps",goals
+text,intent "finish this course",goals
+text,intent "pay off debts",goals
+
+5) greeting
+
+text,intent "hi",greeting
+text,intent "hello there",greeting
+text,intent "hey",greeting
+text,intent "g'day",greeting
+text,intent "what's up",greeting
+text,intent "yo",greeting
+text,intent "howdy",greeting
+text,intent "good morning",greeting
+text,intent "good arvo",greeting
+text,intent "good evening",greeting
+text,intent "hey mate hows it going",greeting
+text,intent "sup",greeting
+text,intent "long time no see",greeting
+text,intent "how are ya",greeting
+text,intent "you there?",greeting
+text,intent "gday sis",greeting
+text,intent "alright bro?",greeting
+text,intent "wagwan",greeting
+text,intent "kia ora",greeting
+text,intent "hey legend",greeting
+text,intent "mornin ☀️",greeting
+text,intent "evenin’",greeting
+text,intent "hey cuz",greeting
+text,intent "hiya",greeting
+text,intent "hey team",greeting
+text,intent "yo yo",greeting
+text,intent "good day to you",greeting
+text,intent "hey champ",greeting
+text,intent "hey deadly one",greeting
+text,intent "hey mob",greeting
+
+6) affirmation
+
+text,intent "i'm ready",affirmation
+text,intent "lets start",affirmation
+text,intent "yeah",affirmation
+text,intent "yep",affirmation
+text,intent "ok",affirmation
+text,intent "okay sounds good",affirmation
+text,intent "sure",affirmation
+text,intent "alright then",affirmation
+text,intent "let's do it",affirmation
+text,intent "i guess so",affirmation
+text,intent "yes please",affirmation
+text,intent "fire away",affirmation
+text,intent "go on",affirmation
+text,intent "too easy",affirmation
+text,intent "sweet as",affirmation
+text,intent "deadly, let's go",affirmation
+text,intent "keen",affirmation
+text,intent "sold",affirmation
+text,intent "righto",affirmation
+text,intent "lock it in",affirmation
+
+7) negation
+
+text,intent "no",negation
+text,intent "nope",negation
+text,intent "nah",negation
+text,intent "not really",negation
+text,intent "i dont want to",negation
+text,intent "i'd rather not",negation
+text,intent "never",negation
+text,intent "definitely not",negation
+text,intent "no thanks",negation
+text,intent "hard pass",negation
+text,intent "not keen",negation
+text,intent "leave it",negation
+text,intent "cant be bothered",negation
+text,intent "not today",negation
+text,intent "that’s a no from me",negation
+text,intent "nah sis",negation
+text,intent "nah cuz",negation
+text,intent "don't feel like it",negation
+text,intent "i'm out",negation
+text,intent "pass",negation
+
+8) question
+
+text,intent "what is this",question
+text,intent "what can u do for me",question
+text,intent "can you help me",question
+text,intent "how does this work",question
+text,intent "whats your name",question
+text,intent "tell me about yourself",question
+text,intent "what is this chatbot for?",question
+text,intent "are you a real person",question
+text,intent "are you yarn?",question
+text,intent "who made you",question
+text,intent "how much does this cost",question
+text,intent "is this private",question
+text,intent "what can i ask you",question
+text,intent "how do i get started",question
+text,intent "why should i trust this",question
+text,intent "can i talk to a human",question
+text,intent "is this safe for kids",question
+text,intent "how long will it take",question
+text,intent "where do i click",question
+text,intent "what’s the next step",question
+
+9) unclear
+
+text,intent "not sure what you mean",unclear
+text,intent "can you explain that",unclear
+text,intent "huh?",unclear
+text,intent "umm",unclear
+text,intent "i'm confused",unclear
+text,intent "what do you mean by that",unclear
+text,intent "i dont get it",unclear
+text,intent "the sky is blue",unclear
+text,intent "my favorite color is red",unclear
+text,intent "what time is it",unclear
+text,intent "asdfghjkl",unclear
+text,intent "i like pizza",unclear
+text,intent "can i ask a question",unclear
+text,intent "why are you asking me this",unclear
+text,intent "this is a bit weird",unclear
+text,intent "idk",unclear
+text,intent "???",unclear
+text,intent "wait what",unclear
+text,intent "eh?",unclear
+text,intent "what’s that got to do with it",unclear
+
+10) no_support
+
+text,intent "no one",no_support
+text,intent "nobody",no_support
+text,intent "i don't have anyone",no_support
+text,intent "i'm all alone",no_support
+text,intent "by myself",no_support
+text,intent "i have no one to talk to",no_support
+text,intent "no one cares about me",no_support
+text,intent "i got nobody",no_support
+text,intent "there's no one for me",no_support
+text,intent "i feel very lonely",no_support
+text,intent "i wish i had support",no_support
+text,intent "i dont have any friends",no_support
+text,intent "my family doesn't get me",no_support
+text,intent "all on my own",no_support
+text,intent "no mob to lean on",no_support
+text,intent "no mates left",no_support
+text,intent "no safe adults",no_support
+text,intent "no aunties to yarn with",no_support
+text,intent "no elders around me",no_support
+text,intent "i’m isolated",no_support
+
+11) no_strengths
+
+text,intent "nothing",no_strengths
+text,intent "i'm not good at anything",no_strengths
+text,intent "i have no strengths",no_strengths
+text,intent "i'm useless",no_strengths
+text,intent "i'm not talented",no_strengths
+text,intent "i'm bad at everything",no_strengths
+text,intent "can't think of anything",no_strengths
+text,intent "i dont have any skills",no_strengths
+text,intent "i suck at everything",no_strengths
+text,intent "nothing i'm proud of",no_strengths
+text,intent "im not special",no_strengths
+text,intent "nothing stands out",no_strengths
+text,intent "no wins lately",no_strengths
+text,intent "i never do well",no_strengths
+text,intent "i always mess up",no_strengths
+text,intent "i’m hopeless",no_strengths
+text,intent "nah, i got no talents",no_strengths
+text,intent "not a single strength",no_strengths
+text,intent "zero skills",no_strengths
+text,intent "i’m average at best",no_strengths
+
+12) no_worries
+
+text,intent "i’m not worried about anything",no_worries
+text,intent "no worries",no_worries
+text,intent "nah, i’m chill",no_worries
+text,intent "i’m fine, no stress",no_worries
+text,intent "not stressing atm",no_worries
+text,intent "all good here",no_worries
+text,intent "i’m sweet",no_worries
+text,intent "no dramas",no_worries
+text,intent "i’m cruisy",no_worries
+text,intent "nothing on my mind",no_worries
+text,intent "not fussed",no_worries
+text,intent "no big issues",no_worries
+text,intent "i’m pretty relaxed",no_worries
+text,intent "no problems rn",no_worries
+text,intent "not worried hey",no_worries
+text,intent "nah, it’s all good",no_worries
+text,intent "no stress at all",no_worries
+text,intent "i’m chillin",no_worries
+text,intent "nothing bugging me",no_worries
+text,intent "zero worries today",no_worries
+
+13) no_goals
+
+text,intent "i have no goals",no_goals
+text,intent "i don't have any goals",no_goals
+text,intent "i don't know what i want",no_goals
+text,intent "not sure",no_goals
+text,intent "haven't thought about it",no_goals
+text,intent "what's the point",no_goals
+text,intent "the future is bleak",no_goals
+text,intent "it's impossible",no_goals
+text,intent "i'll probably fail anyway",no_goals
+text,intent "no idea",no_goals
+text,intent "i dont know",no_goals
+text,intent "no plan",no_goals
+text,intent "nothing i’m aiming for",no_goals
+text,intent "cbb setting goals",no_goals
+text,intent "goals don’t matter",no_goals
+text,intent "nah, no dreams",no_goals
+text,intent "i'm stuck",no_goals
+text,intent "i don’t care anymore",no_goals
+text,intent "too hard to plan",no_goals
+text,intent "not thinking that far",no_goals
+
+14) identity_question
+
+text,intent "who are you",identity_question
+text,intent "what are you",identity_question
+text,intent "are you a bot",identity_question
+text,intent "are you a real person",identity_question
+text,intent "are you human or ai",identity_question
+text,intent "what do i call you",identity_question
+text,intent "do you have a name",identity_question
+text,intent "where are you from",identity_question
+text,intent "who built you",identity_question
+text,intent "are you yarn?",identity_question
+text,intent "are you from government?",identity_question
+text,intent "are you a counselor",identity_question
+text,intent "are you like siri",identity_question
+text,intent "you a deadly bot or what",identity_question
+text,intent "are you listening all the time",identity_question
+text,intent "are you trained by my mob",identity_question
+text,intent "do you have feelings",identity_question
+text,intent "are you safe to talk to",identity_question
+text,intent "are you just a script",identity_question
+text,intent "are you a human behind the screen",identity_question
+
+15) help_question
+
+text,intent "can you help me",help_question
+text,intent "i need help",help_question
+text,intent "could you give me a hand",help_question
+text,intent "how can you support me",help_question
+text,intent "what can you do for me",help_question
+text,intent "can you point me somewhere",help_question
+text,intent "where can i get support",help_question
+text,intent "who can i talk to",help_question
+text,intent "can you find resources",help_question
+text,intent "can you book me an appointment",help_question
+text,intent "help me figure this out",help_question
+text,intent "what do i do now",help_question
+text,intent "can you explain my options",help_question
+text,intent "can you listen for a bit",help_question
+text,intent "can you translate this for me",help_question
+text,intent "can you tell me next steps",help_question
+text,intent "how do i get a counselor",help_question
+text,intent "where do i go for crisis",help_question
+text,intent "can you check this form",help_question
+text,intent "can you yarn with me",help_question
+
+16a) feeling_positive
+
+text,intent "feeling good today",feeling_positive
+text,intent "i’m happy",feeling_positive
+text,intent "i feel proud",feeling_positive
+text,intent "pretty chill",feeling_positive
+text,intent "i’m grateful",feeling_positive
+text,intent "got some good news",feeling_positive
+text,intent "today was deadly",feeling_positive
+text,intent "i’m keen and excited",feeling_positive
+text,intent "i’m optimistic",feeling_positive
+text,intent "feeling strong",feeling_positive
+text,intent "i’m pumped",feeling_positive
+text,intent "that made me smile",feeling_positive
+text,intent "vibes are good",feeling_positive
+text,intent "heart feels full",feeling_positive
+text,intent "i’m calm",feeling_positive
+
+16b) feeling_neutral
+
+text,intent "i'm okay",feeling_neutral
+text,intent "meh",feeling_neutral
+text,intent "so-so",feeling_neutral
+text,intent "nothing much going on",feeling_neutral
+text,intent "same old",feeling_neutral
+text,intent "i’m fine i guess",feeling_neutral
+text,intent "could be better, could be worse",feeling_neutral
+text,intent "just cruisin",feeling_neutral
+text,intent "regular day",feeling_neutral
+text,intent "neutral about it",feeling_neutral
+text,intent "no big feelings rn",feeling_neutral
+text,intent "alright",feeling_neutral
+text,intent "steady",feeling_neutral
+text,intent "nothing to report",feeling_neutral
+text,intent "i’m here",feeling_neutral
+
+16c) feeling_negative
+
+text,intent "i feel sad",feeling_negative
+text,intent "i'm stressed",feeling_negative
+text,intent "i’m anxious",feeling_negative
+text,intent "i feel numb",feeling_negative
+text,intent "i'm angry",feeling_negative
+text,intent "i'm disappointed",feeling_negative
+text,intent "today was rough",feeling_negative
+text,intent "feeling overwhelmed",feeling_negative
+text,intent "i'm not coping",feeling_negative
+text,intent "my chest feels heavy",feeling_negative
+text,intent "everything sucks",feeling_negative
+text,intent "feeling lonely as",feeling_negative
+text,intent "i’m exhausted",feeling_negative
+text,intent "down in the dumps",feeling_negative
+text,intent "i'm struggling heaps",feeling_negative
+
+17) deflection
+
+text,intent "can we not talk about that",deflection
+text,intent "rather not say",deflection
+text,intent "skip this one",deflection
+text,intent "don’t wanna yarn about it",deflection
+text,intent "let’s change the subject",deflection
+text,intent "idk, next question",deflection
+text,intent "i’ll tell you later",deflection
+text,intent "not comfy sharing that",deflection
+text,intent "it’s complicated",deflection
+text,intent "leave it for now",deflection
+text,intent "hard to talk about",deflection
+text,intent "no comment",deflection
+text,intent "that’s personal",deflection
+text,intent "can we talk footy instead",deflection
+text,intent "don’t wanna get into it",deflection
+text,intent "ask me something else",deflection
+text,intent "not the right time",deflection
+text,intent "can we yarn later",deflection
+text,intent "i’m busy rn",deflection
+text,intent "nah, park it",deflection
