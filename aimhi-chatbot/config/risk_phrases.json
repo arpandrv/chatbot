@@ -49,6 +49,58 @@
         {"phrase": "anniversary", "variants": ["death anniversary", "on the anniversary"]},
         {"phrase": "everyone would be better", "variants": ["they'd be better off", "world would be better", "better place without me"]}
     ],
+    "fuzzy_phrases": [
+        "suicide",
+        "kill myself", 
+        "end my life",
+        "self harm",
+        "hurt myself",
+        "cutting",
+        "overdose",
+        "want to die",
+        "wanna die",
+        "slit wrists",
+        "slit my wrists"
+    ],
+    "critical_tokens": [
+        "suicide", "suicidal", "kill", "die", "dead", "death",
+        "harm", "hurt", "cut", "cutting", "overdose", "pills",
+        "jump", "hang", "drown", "blade", "rope", "gun", "slit",
+        "wrists", "wanna", "gonna"
+    ],
+    "context_validation": {
+        "positive_indicators": [
+            "help others", "help people", "help more people", "help my friends",
+            "helping others", "helping people", "helping my friends", 
+            "want to help", "like to help", "good at helping", "love helping",
+            "help out", "help family", "help community", "volunteer", "support others"
+        ],
+        "concerning_context": [
+            "myself", "my life", "going to", "plan to", "will", "can't", 
+            "no point", "tired of", "i'll", "my wrists"
+        ]
+    },
+    "false_positives": {
+        "innocent_phrases": [
+            "kill time", "killing time", "die my hair", "dye my hair", 
+            "dying to see", "dying to know", "dying to meet", "dying to try",
+            "dead tired", "dead beat", "dead serious", "dead wrong",
+            "cut costs", "cutting costs", "cut expenses", "cutting expenses", 
+            "cut back", "cutting back", "cut down", "cutting down",
+            "jump rope", "jump around", "jump up", "jump in",
+            "hang out", "hang up", "hang around", "hang tight",
+            "wanna finish", "wanna make", "wanna build", "wanna create", 
+            "wanna complete", "wanna do", "wanna try", "wanna learn"
+        ],
+        "context_patterns": [
+            {"token": "kill", "safe_context": ["time", "it", "the mood", "the vibe", "the fun"]},
+            {"token": "die", "safe_context": ["hair", "my hair", "to see", "to know", "to meet", "to try"]},
+            {"token": "dead", "safe_context": ["tired", "beat", "serious", "wrong", "battery", "phone"]},
+            {"token": "cut", "safe_context": ["costs", "expenses", "back", "down", "hair", "nails"]},
+            {"token": "hang", "safe_context": ["out", "up", "around", "tight", "on", "pictures"]},
+            {"token": "wanna", "safe_context": ["finish", "make", "build", "create", "complete", "do", "try", "learn", "work", "code", "program", "develop", "project", "app", "website", "chatbot", "game", "software"]}
+        ]
+    },
     "crisis_resources": {
         "13YARN": {
             "number": "13 92 76",

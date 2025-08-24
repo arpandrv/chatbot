@@ -2,54 +2,76 @@ import os
 import aiohttp
 import json
 
-class LLMClient:
-    def __init__(self, model_name="anthropic/claude-3-haiku", timeout=30.0):
-        self.model = model_name
-        self.timeout = timeout
-        self.max_tokens = 500
-        self.api_key = os.getenv('OPENROUTER_API_KEY')
-        self.api_url = "https://openrouter.ai/api/v1/chat/completions"
-        self.site_url = os.getenv('SITE_URL', 'https://aimhi-chatbot.local')
-        self.site_name = os.getenv('SITE_NAME', 'AIMhi-Y Supportive Yarn Chatbot')
+# Load environment variables
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not available
 
-    async def generate(self, prompt, temperature=0.7):
+class LLMClient:
+    def __init__(self, config_type="conversation"):
+        # Load config from JSON
+        self._load_config()
+        
+        # Set parameters based on config type (conversation or summary)
+        params = self.config['parameters'].get(config_type, self.config['parameters']['conversation'])
+        
+        self.model = self.config['models']['primary']
+        self.timeout = params['timeout']
+        self.max_tokens = params['max_tokens']
+        self.temperature = params['temperature']
+        
+        # Environment variables (secrets)
+        self.api_key = os.getenv('ANTHROPIC_API_KEY')
+        self.api_url = self.config['api_url']
+    
+    def _load_config(self):
+        """Load LLM configuration from JSON file."""
+        try:
+            config_dir = os.path.dirname(os.path.dirname(__file__))  # Go up to project root
+            config_path = os.path.join(config_dir, 'config', 'llm_config.json')
+            with open(config_path, 'r', encoding='utf-8') as f:
+                self.config = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Warning: Could not load llm_config.json: {e}, using defaults")
+            # Fallback to hardcoded defaults
+            self.config = {
+                "api_url": "https://api.anthropic.com/v1/messages",
+                "models": {"primary": "claude-3-haiku-20240307"},
+                "parameters": {
+                    "conversation": {"max_tokens": 500, "temperature": 0.8, "timeout": 45},
+                    "summary": {"max_tokens": 800, "temperature": 0.3, "timeout": 60}
+                }
+            }
+
+    async def generate(self, system_prompt, user_message, temperature=None):
+        """Generate response with proper system/user message separation"""
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": self.site_url,
-            "X-Title": self.site_name,
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
             "Content-Type": "application/json"
         }
         
         data = {
             "model": self.model,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
             "max_tokens": self.max_tokens,
-            "temperature": temperature,
-            "top_p": 0.9,
-            "frequency_penalty": 0.1
+            "temperature": temperature if temperature is not None else self.temperature,
+            "system": system_prompt,
+            "messages": [
+                {"role": "user", "content": user_message}
+            ]
         }
 
         async with aiohttp.ClientSession() as session:
             async with session.post(self.api_url, headers=headers, json=data, timeout=self.timeout) as response:
                 if response.status != 200:
                     error_text = await response.text()
-                    raise Exception(f"OpenRouter API error {response.status}: {error_text}")
+                    raise Exception(f"Anthropic API error {response.status}: {error_text}")
                 
                 result = await response.json()
-                return result['choices'][0]['message']['content']
+                return result['content'][0]['text']
 
-    def generate_sync(self, prompt, temperature=0.7):
-        """Synchronous wrapper for the async generate method"""
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        
-        return loop.run_until_complete(self.generate(prompt, temperature))
     
     def validate_response(self, text):
         """Validate LLM response"""

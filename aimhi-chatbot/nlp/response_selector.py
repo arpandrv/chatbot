@@ -1,35 +1,32 @@
 """
-Varied response selector for natural conversation flow.
-Selects appropriate responses from pools to avoid repetition.
+Unified response selector for natural conversation flow.
+Selects appropriate responses from pools with random variety and sentiment matching.
 """
 
 import json
 import os
 import random
 from typing import Dict, List, Optional
-from collections import defaultdict
 
 
 class VariedResponseSelector:
-    """Selects varied responses from pools to create natural conversation."""
+    """Selects varied responses from pools using random selection and sentiment matching."""
     
     def __init__(self):
         """Initialize the response selector."""
         self.response_pools = self._load_response_pools()
-        self.response_history = defaultdict(list)  # Track used responses per session
-        self.max_history = 3  # Remember last 3 responses to avoid repetition
         
     def _load_response_pools(self) -> Dict:
-        """Load response pools from JSON file."""
+        """Load unified responses from JSON file."""
         config_path = os.path.join(
             os.path.dirname(__file__), 
-            '..', 'config', 'response_pools.json'
+            '..', 'config', 'responses.json'
         )
         try:
             with open(config_path, 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
-            print(f"Warning: response_pools.json not found at {config_path}")
+            print(f"Warning: responses.json not found at {config_path}")
             return {}
     
     def get_response(self, category: str, subcategory: str, 
@@ -40,7 +37,7 @@ class VariedResponseSelector:
         Args:
             category: Main category (e.g., 'welcome', 'support_people')
             subcategory: Subcategory (e.g., 'greeting', 'acknowledgment')
-            session_id: Session ID for tracking response history
+            session_id: Session ID (kept for compatibility but not used)
             user_sentiment: User's emotional state for tone matching
             
         Returns:
@@ -69,32 +66,25 @@ class VariedResponseSelector:
         if not isinstance(response_pool, list) or not response_pool:
             return self._get_fallback_response(category, subcategory)
         
-        # Filter out recently used responses if we have a session
-        available_responses = response_pool.copy()
-        if session_id:
-            history_key = f"{session_id}_{category}_{subcategory}"
-            used_responses = self.response_history.get(history_key, [])
-            
-            # Remove recently used responses from available pool
-            available_responses = [r for r in available_responses if r not in used_responses]
-            
-            # If all responses have been used, reset and use all
-            if not available_responses:
-                available_responses = response_pool.copy()
-                self.response_history[history_key] = []
-        
         # Select response based on user sentiment if provided
-        selected = self._select_by_sentiment(available_responses, user_sentiment)
+        return self._select_by_sentiment(response_pool, user_sentiment)
+    
+    def get_prompt(self, category: str, subcategory: str = 'prompt', 
+                   session_id: str = None, user_sentiment: str = None) -> str:
+        """
+        Get a prompt from the unified response system.
+        Same as get_response but with 'prompt' as default subcategory.
         
-        # Track the selected response
-        if session_id:
-            history_key = f"{session_id}_{category}_{subcategory}"
-            self.response_history[history_key].append(selected)
-            # Keep only recent history
-            if len(self.response_history[history_key]) > self.max_history:
-                self.response_history[history_key].pop(0)
-        
-        return selected
+        Args:
+            category: Main category (e.g., 'welcome', 'support_people')
+            subcategory: Subcategory (defaults to 'prompt')
+            session_id: Session ID (kept for compatibility but not used)
+            user_sentiment: User's emotional state for tone matching
+            
+        Returns:
+            Selected prompt string
+        """
+        return self.get_response(category, subcategory, session_id, user_sentiment)
     
     def _select_by_sentiment(self, responses: List[str], sentiment: str = None) -> str:
         """Select response based on user sentiment for better tone matching."""
@@ -226,13 +216,3 @@ class VariedResponseSelector:
         
         return combined
     
-    def clear_history(self, session_id: str = None):
-        """Clear response history for a session or all sessions."""
-        if session_id:
-            # Clear specific session
-            keys_to_remove = [k for k in self.response_history if k.startswith(session_id)]
-            for key in keys_to_remove:
-                del self.response_history[key]
-        else:
-            # Clear all history
-            self.response_history.clear()

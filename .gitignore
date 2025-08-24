@@ -15,6 +15,7 @@ venv/
 # SQLite databases
 *.db
 *.sqlite3
+*.sqlite
 
 # Logs & temp
 *.log
@@ -32,3 +33,20 @@ Thumbs.db
 # claude settings
 .claude.json
 .claude/settings.local.json
+.claude/agents/distilbert-data-prep.md
+.claude/agents/distilbert-qa-engineer.md
+.claude/agents/distilbert-trainer.md
+
+# Machine Learning models
+*.pth
+*.pt
+*.onnx
+*.pkl
+*.pickle
+*.h5
+*.safetensors
+*.bin
+*.model
+
+# AI models folder
+aimhi-chatbot/ai_models/

@@ -1,0 +1,256 @@
+{
+    "welcome": {
+        "greeting": [
+            "G'day! Good to meet you. I'm Yarn, here for a supportive chat about your wellbeing. How are you feeling today?",
+            "Hello mate, how are you going?",
+            "Hi there, how's it going?",
+            "Hey, how are you doing today?",
+            "Hello! How are you feeling?",
+            "Hi, I'm Yarn. How have you been?",
+            "Hey, I'm Yarn, nice to meet you! How are you feeling lately?",
+            "Hi! I'm Yarn, here to have a friendly chat. How's your day been?",
+            "Hello, I'm Yarn - here to chat anytime you need. How are you feeling?",
+            "Hey mate, I'm Yarn. I'm here for a yarn about whatever's on your mind. How's your day so far?"
+        ],
+        "identity_response": [
+            "I'm Yarn, a supportive companion here to have a chat with you about your wellbeing. Want to yarn about what's going well and what's on your mind?",
+            "I'm Yarn! I'm here to listen and support you through whatever you're going through. Ready for a chat?",
+            "The name's Yarn. I'm here to have a supportive conversation with you about your strengths and the people who care about you. Sound good?",
+            "I'm Yarn, your chat companion. I'm here to yarn with you about life, your strengths, and anything that's on your mind. Shall we start?"
+        ],
+        "help_response": [
+            "I'm here to have a supportive yarn with you - we'll chat about your support people, your strengths, what's on your mind, and your goals. It's all about recognizing what's going well and working through what's challenging. Ready to start?",
+            "I can help by having a friendly chat with you about your wellbeing. We'll talk about the people who support you, what you're good at, any worries you have, and what you want to achieve. Sound good?",
+            "I'm here to listen and support you. We'll yarn about your life - the good stuff and the challenges. It's a safe space to talk about whatever's on your mind. Want to give it a go?",
+            "Think of me as someone to yarn with about life. We'll explore your support network, celebrate your strengths, discuss any worries, and think about your future. Ready when you are!"
+        ],
+        "ready_response": [
+            "Deadly! Let's start by talking about your support people - the mob who've got your back. Who are the people in your life who care about you?",
+            "Great! Let's begin with your support network. Who are the people you can turn to when you need help or just someone to talk to?",
+            "Excellent! First up, let's yarn about your support people. Tell me about the family, friends, or others who are there for you.",
+            "Good on ya! Let's start by chatting about who's in your corner. Who are the people that support you in your life?"
+        ],
+        "unclear_fallback": "G'day! I'm here for a supportive yarn about your wellbeing. We'll take it easy - just a safe chat at your own pace. Ready to start?"
+    },
+    "support_people": {
+        "prompt": [
+            "Deadly! Let's start by talking about your support people - the mob who've got your back. Who are the people in your life who care about you?",
+            "Let's yarn about your support network. Who are the people in your life who support you?",
+            "Tell me about your support people - the family, friends, or others who've got your back.",
+            "Who are the people in your corner? Who supports you in your life?"
+        ],
+        "clarify": [
+            "Tell me about the people in your life - family, friends, teachers, Elders, or anyone who's been there for you. Even if it's just one person, that's a good start.",
+            "Who are the people you can talk to when you need support? It could be family, friends, teachers, or anyone who cares about you.",
+            "Think about the people in your life - who's there for you when you need them? Family, friends, community members?",
+            "What about the people who support you? Could be your family, friends, teachers, or anyone who shows they care."
+        ],
+        "acknowledgment": [
+            "It's wonderful that you have them in your life.",
+            "That's deadly! Having people who care about you is so important.",
+            "Sounds like you've got some good people around you.",
+            "That's great to hear. Support from others makes such a difference.",
+            "Good on ya for recognizing the people who are there for you.",
+            "It's brilliant that you have that support network.",
+            "That's really positive. Those connections are so valuable."
+        ],
+        "no_support": [
+            "That sounds really tough, and I hear you. Sometimes support can come from unexpected places - maybe a teacher who's been kind, an Elder in your community, or even people online. Is there anyone at all who's shown they care, even in small ways?",
+            "I understand that feeling, and it must be really hard. Sometimes support isn't obvious - it might be someone at school, in your community, or even online who gets you. Can you think of anyone who's been there for you, even a little bit?",
+            "That's a really difficult place to be, and I'm sorry you're feeling alone. Support doesn't always look the way we expect - it could be a counselor, a neighbor, or someone from an online community. Is there anyone you can talk to, even occasionally?"
+        ],
+        "transition_advance": [
+            "I understand that can feel tough. Let's talk about your strengths - the things that make you special.",
+            "That's okay. Let's move on and talk about your strengths - the things you're good at.",
+            "I hear you. Let's yarn about your strengths - what makes you deadly."
+        ],
+        "transition_unclear": [
+            "That's okay, let's move on and talk about your strengths - the things you're good at.",
+            "No worries. Let's yarn about your strengths - what are you good at?",
+            "That's fine. Let's talk about your strengths - what makes you special."
+        ]
+    },
+    "strengths": {
+        "prompt": [
+            "Now let's yarn about your strengths - the things that make you deadly! What are you good at?",
+            "What are your strengths? What makes you proud? This could be anything - sport, music, art, helping others, making people laugh, being a good friend, or getting through tough times.",
+            "Let's talk about what you're good at. What are your strengths? Everyone has them, even if they're hard to see sometimes.",
+            "What makes you special? What are you good at? Could be anything - your talents, personality, or ways you help others."
+        ],
+        "clarify": [
+            "What are you good at? It could be anything - sports, music, art, cooking, gaming, being kind to others, making people laugh, or even just surviving tough times. What would your support people say you're good at?",
+            "Think about your strengths - what do you do well? Could be talents like music or sport, or personal qualities like being a good friend or staying strong through challenges.",
+            "Everyone has strengths. What's something you're proud of? Maybe you're creative, good at helping others, or strong for getting through difficult times?",
+            "What would others say you're good at? Think about your skills, talents, or the way you treat people."
+        ],
+        "acknowledgment": [
+            "Those are some deadly strengths! You should be proud.",
+            "That's brilliant! It's great that you recognize what you're good at.",
+            "Wow, you've got some real talents there!",
+            "That's fantastic! Those are valuable strengths to have.",
+            "Good on ya! It's important to know what makes you special.",
+            "Those are awesome strengths! You've got a lot going for you.",
+            "That's really impressive! You should feel proud of those abilities."
+        ],
+        "encourage": [
+            "Everyone has strengths, even when they're hard to see. Maybe you're good at listening to your friends, you're creative, you're strong for getting through difficult times, or you have skills you haven't even noticed yet. What's one small thing you do well?",
+            "I bet you have more strengths than you realize. Sometimes it's being a good friend, having a sense of humor, being kind to others, or just surviving when things get tough. What would your support people say you're good at?",
+            "It can be hard to see our own strengths sometimes. Think about it - maybe you're good at gaming, making people laugh, helping family, or just being yourself. There's definitely something that makes you special. What do you enjoy doing?"
+        ],
+        "transition_advance": [
+            "I hear you, and sometimes it's hard to see our own strengths. Let's move on and talk about what's been on your mind.",
+            "That's okay, sometimes our strengths become clearer over time. Let's talk about what's been on your mind lately.",
+            "I understand. Let's yarn about what's been weighing on you lately."
+        ],
+        "transition_unclear": [
+            "That's okay, sometimes our strengths become clearer over time. Let's talk about what's been on your mind lately.",
+            "No worries. Let's move on to talk about what's been on your mind.",
+            "That's fine. Let's yarn about what's been worrying you."
+        ]
+    },
+    "worries": {
+        "prompt": [
+            "Thanks for sharing your strengths with me. Now, if you're comfortable, let's yarn about what's been on your mind lately. What's been worrying you?",
+            "Let's talk about any worries or concerns you might have. What's been weighing on you? It could be school, family, friends, the future, or anything else.",
+            "What's been on your mind lately? Sometimes talking about our worries helps lighten the load.",
+            "If you're ready, let's discuss what's been troubling you. What worries have been on your mind?"
+        ],
+        "clarify": [
+            "What's been worrying you or playing on your mind? It could be school stress, family stuff, friend drama, money worries, health concerns, or thoughts about your future. It's okay to share what's bothering you.",
+            "What's been weighing on you? Could be anything - school, relationships, family, future, or just general stress.",
+            "Tell me what's been on your mind. What kinds of things have been worrying you lately?",
+            "What's been stressing you out? It's okay to share whatever's been bothering you."
+        ],
+        "acknowledgment": [
+            "Thanks for trusting me with that. It takes courage to talk about our worries.",
+            "I hear you. That sounds like a lot to deal with.",
+            "I appreciate you sharing that with me. These things can be really challenging.",
+            "That must be weighing on you. Thanks for being open about it.",
+            "I understand. It's not easy dealing with those kinds of worries.",
+            "That sounds really stressful. I'm glad you felt you could tell me.",
+            "Those are valid concerns. It's normal to worry about these things."
+        ],
+        "no_worries": [
+            "That's good to hear! Let's talk about your goals - what you'd like to work towards.",
+            "That's great if you're not worried about anything right now! Let's yarn about your goals.",
+            "Good to hear things are going smoothly for you at the moment. Let's talk about your goals.",
+            "It's wonderful if you're in a good place right now. Let's discuss what you want to achieve."
+        ],
+        "transition_advance": [
+            "That's okay, sometimes it's hard to put worries into words. Let's talk about your goals - what you'd like to achieve.",
+            "I understand. Let's move on to talk about your goals - where you want to head.",
+            "That's fine. Let's yarn about your goals - what you'd like to work towards."
+        ]
+    },
+    "goals": {
+        "prompt": [
+            "You've shared your support people, your strengths, and what's on your mind. Now let's talk about your goals - where you want to head. What's one thing you'd like to work towards?",
+            "Now, let's think about the future. What goals do you have? What would you like to achieve? It could be something big like finishing school or getting a job, or something smaller like improving a skill.",
+            "Let's look forward now - what are your goals? What do you want to work on? What matters to you?",
+            "What about your aspirations? What goals do you have for yourself? What would you like to achieve?"
+        ],
+        "clarify": [
+            "What's one thing you'd like to achieve or work towards? It could be anything - finishing Year 12, getting fitter, learning something new, improving relationships, finding a job, or just feeling better about yourself. What would make you proud?",
+            "Think about your goals - what do you want to work towards? Could be big goals like finishing school, or smaller ones like learning a new skill.",
+            "What's something you'd like to achieve? What would make you feel proud or accomplished?",
+            "What goals do you have? What's one thing you'd like to work on or improve in your life?"
+        ],
+        "acknowledgment": [
+            "That's a great goal to work towards! You've got this.",
+            "That's brilliant! Having something to aim for gives us direction.",
+            "What a deadly goal! I believe you can achieve it.",
+            "That's fantastic! It's great to have something to work towards.",
+            "Good on ya for having clear goals! That shows real strength.",
+            "That's an excellent goal! Remember, you have support and strengths to help you get there.",
+            "That's awesome! Goals give us hope and purpose."
+        ],
+        "no_goals": [
+            "That's okay. Sometimes it's hard to think about goals when we're just trying to get by. Maybe start with something small?",
+            "I understand. Goals can be overwhelming sometimes. What about just one small thing you'd like to see improve?",
+            "That's alright. Sometimes we need to focus on the present before we can think about the future.",
+            "No worries. Goals don't have to be big - even wanting to feel a bit better tomorrow is a goal."
+        ],
+        "transition_advance": [
+            "That's okay, goals can become clearer over time.",
+            "That's fine. Sometimes goals develop as we grow.",
+            "I understand. Goals can be hard to think about sometimes."
+        ]
+    },
+    "summary": {
+        "prompt": [
+            "Thanks for yarning with me today. It takes strength to talk about these things, and you should feel proud for sharing.",
+            "Thank you for having this yarn with me today. You've shown real strength by talking about your support people, recognizing your abilities, sharing your worries, and thinking about your goals.",
+            "I really appreciate you sharing all of this with me. You've done something really positive by having this conversation.",
+            "Good on ya for having this yarn with me. It shows real strength to talk about these things."
+        ],
+        "closing": [
+            "Remember - you have people who support you and strengths to build on as you work towards your goals. You've got this, and you don't have to face challenges alone. Take care of yourself.",
+            "You've shown real strength today by talking about these things. Remember, you have support, you have talents, and you have goals worth working towards. Stay deadly!",
+            "Thanks again for this yarn. You have a support network, amazing strengths, and clear goals - that's a powerful combination. Take care, and remember you're not alone.",
+            "I'm proud of you for having this conversation. You've got people who care, strengths to be proud of, and goals to work towards. Keep being strong!"
+        ],
+        "followup": [
+            "Would you like to yarn about any of these topics more, or is there anything else on your mind?",
+            "Is there anything else you'd like to talk about? I'm here if you need.",
+            "How are you feeling after our chat? Would you like to explore anything further?",
+            "Do you feel like we've covered everything, or is there more you'd like to discuss?"
+        ]
+    },
+    "feeling_response": {
+        "positive": [
+            "That's good to hear! It's great you're feeling positive.",
+            "I'm glad to hear that! Good on ya.",
+            "Deadly! It's wonderful you're doing well.",
+            "That's excellent! Happy to hear you're feeling good.",
+            "Great stuff! Glad things are going well for you."
+        ],
+        "neutral": [
+            "I understand, we all have days like that.",
+            "I hear you - sometimes life's just okay, and that's alright.",
+            "Fair enough. Maybe talking will help brighten things up a bit.",
+            "That's totally normal. We all have those in-between days.",
+            "I get it. Sometimes we're just getting by, and that's okay."
+        ],
+        "negative": [
+            "I'm sorry to hear you're going through a tough time.",
+            "That sounds really hard. Thanks for being honest with me.",
+            "I hear you, and it's okay to not be okay sometimes.",
+            "That must be difficult. I'm here to listen if you want to talk about it.",
+            "I'm sorry things are tough right now. Let's see if we can work through this together."
+        ],
+        "deflection": [
+            "That's okay, you don't have to share if you're not comfortable.",
+            "No worries, we can take things at your pace.",
+            "I understand. We can keep things light if you prefer.",
+            "Fair enough. Let's just have a yarn about whatever you're comfortable with."
+        ],
+        "followup": [
+            "Tell me, who supports you the most in your life?",
+            "Having supportive people around is important. Who's there for you?",
+            "Let's talk about your support network. Who do you turn to when things get tough?",
+            "Who are the people in your life that have your back?"
+        ]
+    },
+    "fallback": {
+        "clarification": [
+            "I'm not quite sure I understood that. Could you tell me a bit more?",
+            "Can you help me understand what you mean?",
+            "I want to make sure I get what you're saying. Could you explain a bit more?",
+            "I didn't quite catch that. Could you say it another way?",
+            "Help me understand better - what do you mean by that?"
+        ],
+        "offer_choice": [
+            "I hear what you're saying, and that's completely valid. Would you like to think about this a bit more, or shall we move on to the next topic?",
+            "That's okay. Would you prefer to keep talking about this, or should we continue with something else?",
+            "No worries. Do you want to spend more time on this, or are you ready to move forward?",
+            "I understand. Should we explore this further, or would you like to talk about something else?"
+        ],
+        "acknowledge_move": [
+            "That's completely okay. Let's move forward then.",
+            "No problem at all. Let's continue.",
+            "I understand. Let's keep going with our yarn.",
+            "Fair enough. Let's move on to the next part."
+        ],
+        "general": "Thanks for sharing that with me. Let's keep yarning about the current step we're on."
+    }
+}

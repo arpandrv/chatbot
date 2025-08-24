@@ -4,166 +4,90 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This repository contains the AIMhi-Y Supportive Yarn Chatbot - a mental health support chatbot designed specifically for Aboriginal and Torres Strait Islander youth. The chatbot implements the AIMhi Stay Strong 4-step therapeutic model through a carefully designed conversation flow.
+AIMhi-Y Supportive Yarn Chatbot - A culturally safe web-based chatbot for Aboriginal and Torres Strait Islander youth, implementing the AIMhi Stay Strong 4-step model (support people → strengths → worries → goals).
 
-## Repository Structure
+## Key Architecture
 
-The main application is located in the `aimhi-chatbot/` directory. Key components:
+### Core Components
+- **Flask API** (`app.py`): Main web server with `/chat` endpoint
+- **FSM State Management** (`core/fsm.py`): Manages conversation flow through 4 steps using transitions library
+- **Message Router** (`core/router.py`): Routes messages through risk detection → intent classification → FSM → response generation
+- **Hybrid Intent Classification**: 
+  - Primary: DistilBERT model (`nlp/intent_distilbert.py`) - 13 intent classes
+  - Fallback: Rule-based system (`fallbacks/rule_based_intent.py`)
+- **Risk Detection** (`nlp/risk_detector.py`): Priority-1 safety system for crisis language
+- **Sentiment Analysis** (`nlp/sentiment.py`): Twitter-RoBERTa model for emotional context
 
-- **aimhi-chatbot/** - Main application directory containing all source code
-- **sentiment_test_dataset.csv/json** - Test datasets for sentiment analysis
-- **chatbot_flow_diagram.html** - Visual representation of conversation flow
-- **RULE_BASED_LIMITATIONS_ANALYSIS.md** - Analysis of rule-based approach limitations
+### Data Flow
+1. User input → Risk detection (first priority)
+2. Intent classification (DistilBERT with rule-based fallback)  
+3. FSM state management and response selection
+4. Optional LLM fallback for open-ended inputs
+5. Response generation with cultural safety filters
 
-## Development Commands
+## Common Commands
 
-### Environment Setup
+### Development
 ```bash
+# Setup virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r aimhi-chatbot/requirements.txt
+
+# Run application
 cd aimhi-chatbot
-pip install -r requirements.txt
-
-# Download spaCy language model if needed
-python -m spacy download en_core_web_sm
-
-# Configure environment
-cp .env.example .env  # Then edit .env with your settings
-```
-
-### Running the Application
-```bash
-cd aimhi-chatbot
-# Development server
 python app.py
 
-# Production server
-gunicorn app:app
+# Application runs on http://127.0.0.1:5000
 ```
 
 ### Testing
 ```bash
 cd aimhi-chatbot
-# Run all tests
-python -m pytest tests/
-
-# Run specific test suite
-python -m pytest tests/test_integration.py -v
-
-# Run with coverage
-python -m pytest --cov=. tests/
+python -m pytest tests/              # Run all tests
+python -m pytest tests/test_risk.py  # Run specific test file
+python -m pytest -v                  # Verbose output
+python -m pytest -k "test_name"      # Run specific test
 ```
 
-### Linting and Code Quality
+### Training DistilBERT Model
 ```bash
-# Install dev dependencies
-pip install pylint black isort
-
-# Format code
-black .
-isort .
-
-# Lint code
-pylint core/ nlp/ llm/ database/
+cd aimhi-chatbot/training
+python train_distilbert.py           # Train intent classifier (~45-90 min on CPU)
+python test_distilbert_inference.py  # Test inference performance
 ```
 
-## Architecture Overview
+## Performance Requirements
+- **Response time**: <500ms total (FSM path)
+- **DistilBERT inference**: <100ms target
+- **Risk detection**: Deterministic, immediate response
+- **LLM fallback**: Optional, 3s timeout
 
-### Core Application Flow
-1. **Risk Detection First** - Every message passes through risk detection (nlp/risk_detector.py)
-2. **FSM State Management** - Conversation follows predefined states: welcome → support_people → strengths → worries → goals → summary
-3. **Intent Classification** - 6-layer hybrid system for understanding user intent
-4. **LLM Fallback** - Optional OpenAI/Anthropic integration for handling edge cases
+## Safety & Cultural Considerations
+- **Risk protocol**: Immediate escalation for crisis language (configured in `config/risk_phrases.json`)
+- **Cultural terms**: Normalized in preprocessing (e.g., "mob" → "family", "deadly" → "good")
+- **No PII storage**: Session IDs are anonymous UUIDs
+- **Strengths-based language**: Warm, non-clinical tone throughout
 
-### Key Components
+## Key Files to Know
+- `config/risk_phrases.json`: Crisis language patterns
+- `config/responses.json`: Pre-approved response templates  
+- `database/repository.py`: Optional chat history storage
+- `llm/guardrails.py`: Output filtering for LLM responses
+- `nlp/preprocessor.py`: Text normalization with cultural terms
 
-**Core Systems:**
-- `core/fsm.py` - Finite state machine managing conversation flow
-- `core/router.py` - Message routing logic and component integration
-- `core/session.py` - Session management (anonymous, UUID-based)
-- `core/user_profile.py` - User context building for LLM
+## Environment Variables
+Create `.env` file with:
+- `SECRET_KEY`: Flask secret key
+- `LLM_ENABLED`: Enable/disable LLM fallback
+- `PRIVACY_STRICT`: Strict privacy mode
+- `MAX_HISTORY`: LLM context window size
 
-**NLP Pipeline:**
-- `nlp/risk_detector.py` - Deterministic crisis detection
-- `nlp/intent.py` - 6-layer intent classification system
-- `nlp/sentiment.py` - Sentiment analysis using Twitter-RoBERTa
-- `nlp/preprocessor.py` - Text normalization and preprocessing
-
-**LLM Integration:**
-- `llm/client.py` - API client for OpenAI/Anthropic
-- `llm/guardrails.py` - Safety filters for LLM outputs
-- `llm/context_builder.py` - Context preparation for LLM
-
-### Configuration
-- `config/risk_phrases.json` - Risk detection patterns
-- `config/content.json` - Conversation prompts and responses
-- `config/conversation_patterns.json` - Intent classification patterns
-- `config/llm_config.json` - LLM model settings
-- `.env` - Environment variables and feature flags
-
-## Testing Strategy
-
-### Unit Tests
-- `test_fsm.py` - State machine transitions
-- `test_risk.py` - Risk detection accuracy
-- `test_guardrails.py` - LLM output filtering
-
-### Integration Tests
-- `test_integration.py` - End-to-end conversation flows
-- `test_api.py` - Flask endpoint testing
-- `test_llm.py` - LLM integration (requires API keys)
-
-## Important Implementation Details
-
-### Safety and Privacy
-- Risk detection runs FIRST on every message - no exceptions
-- No PII storage - only anonymous session IDs
-- All LLM outputs filtered through guardrails
-- Crisis resources provided immediately when risk detected
-
-### Performance Requirements
-- Rule-based path: < 500ms response time
-- LLM fallback: < 3s response time
-- Session timeout: 30 minutes of inactivity
-
-### Cultural Considerations
-- Content designed for Aboriginal and Torres Strait Islander youth
-- Language and examples culturally appropriate
-- Follows AIMhi Stay Strong therapeutic model
-
-## Current Status
-
-### Completed Features
-- ✅ Core FSM with 4-step flow
-- ✅ Web interface (Flask + Bootstrap)
-- ✅ 6-layer intent classification
-- ✅ Sentiment analysis integration
-- ✅ Risk detection system
-- ✅ Database for chat history
-- ✅ LLM fallback with guardrails
-- ✅ Comprehensive test suite
-
-### Known Limitations
-- Prototype only - not for clinical use
-- Limited to English language
-- Requires internet for LLM fallback
-- No voice interface
-
-## Deployment Notes
-
-### Local Development
-The application runs on Flask development server by default. Use `python app.py` for quick testing.
-
-### Production Deployment
-Use Gunicorn or similar WSGI server. Ensure:
-- Set `FLASK_ENV=production` in environment
-- Configure proper SECRET_KEY in .env
-- Enable HTTPS for production
-- Set up proper logging and monitoring
-
-## Database
-
-SQLite database (`chat_history.db`) stores:
-- Session IDs (anonymous)
-- Message history (for LLM context)
-- Timestamps
-
-Schema defined in `database/schema.sql`. Initialize with `init_db()` function.
+## Important Notes
+- This is a prototype/demo only - not for clinical use
+- Maintains conversation state in memory (per session)
+- Uses SQLite for optional chat history storage
+- Models stored in `ai_models/` and `models/` directories
+- All responses must pass cultural safety filters

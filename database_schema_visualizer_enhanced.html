@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIMhi-Y Chatbot Database Schema Visualizer - Enhanced</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: auto;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .schema-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .table-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .table-card.expanded {
+            grid-column: 1 / -1;
+            max-width: none;
+        }
+
+        .table-header {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .table-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            z-index: 0;
+        }
+
+        .table-header h3 {
+            font-size: 1.4em;
+            margin-bottom: 5px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .table-type {
+            font-size: 0.9em;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .table-description {
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin-top: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .priority-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: bold;
+            z-index: 2;
+        }
+
+        .priority-critical { background: #ff4444; color: white; }
+        .priority-important { background: #ff9800; color: white; }
+        .priority-optional { background: #2196F3; color: white; }
+
+        .table-actions {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 3;
+        }
+
+        .action-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            margin-right: 5px;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+
+        .table-body {
+            padding: 0;
+        }
+
+        .column {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s ease;
+        }
+
+        .column:hover {
+            background-color: #f8f9fa;
+        }
+
+        .column:last-child {
+            border-bottom: none;
+        }
+
+        .column-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .pk-icon { color: #ffd700; }
+        .fk-icon { color: #ff6b6b; }
+        .regular-icon { color: #4ecdc4; }
+
+        .column-info {
+            flex-grow: 1;
+        }
+
+        .column-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .column-type {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            margin-bottom: 3px;
+        }
+
+        .column-description {
+            font-size: 0.8em;
+            color: #95a5a6;
+            font-style: italic;
+        }
+
+        .fk-reference {
+            color: #dc3545;
+            font-weight: 600;
+            font-size: 0.75em;
+            margin-top: 2px;
+        }
+
+        .constraints-list {
+            margin-top: 5px;
+        }
+
+        .constraint-item {
+            display: inline-block;
+            background: #e9ecef;
+            color: #495057;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin: 2px 2px 2px 0;
+            font-size: 0.65em;
+        }
+
+        .sample-data {
+            margin: 0 20px 20px 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #17a2b8;
+            display: none;
+        }
+
+        .sample-data.show {
+            display: block;
+        }
+
+        .sample-data h4 {
+            color: #17a2b8;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sample-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8em;
+            margin-top: 8px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .sample-table th,
+        .sample-table td {
+            padding: 8px 10px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+
+        .sample-table th {
+            background: #17a2b8;
+            color: white;
+            font-weight: 600;
+        }
+
+        .sample-table td {
+            background: white;
+        }
+
+        .sample-table td:first-child {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .expand-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin: 10px 20px 20px 20px;
+            transition: all 0.2s ease;
+        }
+
+        .expand-btn:hover {
+            background: #138496;
+            transform: scale(1.05);
+        }
+
+        .relationships {
+            margin-top: 30px;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .relationships h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .relationship-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+            transition: all 0.2s ease;
+        }
+
+        .relationship-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .relationship-arrow {
+            margin: 0 15px;
+            color: #4CAF50;
+            font-size: 1.2em;
+        }
+
+        .table-ref {
+            font-weight: bold;
+            color: #2c3e50;
+            background: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            border: 2px solid #4CAF50;
+        }
+
+        .relationship-description {
+            margin-left: 15px;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .indexes-info {
+            margin: 15px 20px;
+            padding: 10px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            font-size: 0.8em;
+        }
+
+        .indexes-info h5 {
+            color: #856404;
+            margin-bottom: 5px;
+        }
+
+        .index-item {
+            color: #856404;
+            margin: 2px 0;
+        }
+
+        @media (max-width: 768px) {
+            .schema-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .legend {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗄️ AIMhi-Y Chatbot Database Schema</h1>
+            <p>Enhanced visualization with sample data and relationship mappings</p>
+        </div>
+
+        <div class="schema-grid" id="schemaGrid">
+            <!-- Tables will be dynamically generated here -->
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">8</div>
+                <div class="stat-label">Total Tables</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">50+</div>
+                <div class="stat-label">Total Columns</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">15</div>
+                <div class="stat-label">Indexes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">6</div>
+                <div class="stat-label">Foreign Keys</div>
+            </div>
+        </div>
+
+        <div class="relationships">
+            <h2>🔗 Table Relationships & Data Flow</h2>
+            <div id="relationshipsList">
+                <!-- Relationships will be generated here -->
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color pk-icon" style="background: #ffd700;"></div>
+                <span>Primary Key</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color fk-icon" style="background: #ff6b6b;"></div>
+                <span>Foreign Key</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color regular-icon" style="background: #4ecdc4;"></div>
+                <span>Regular Column</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const databaseSchema = {
+            sessions: {
+                type: "Core Session Management",
+                priority: "critical",
+                description: "Manages user sessions and FSM state persistence across server restarts",
+                columns: [
+                    { name: "session_id", type: "TEXT PRIMARY KEY", isPK: true, description: "UUID for each conversation session" },
+                    { name: "fsm_state", type: "TEXT NOT NULL", isFK: false, description: "Current step in 4-step flow", constraints: ["DEFAULT 'welcome'", "CHECK(fsm_state IN (...))"  ] },
+                    { name: "created_at", type: "DATETIME", isFK: false, description: "When conversation started", constraints: ["DEFAULT CURRENT_TIMESTAMP"] },
+                    { name: "last_activity", type: "DATETIME", isFK: false, description: "Last user interaction timestamp", constraints: ["DEFAULT CURRENT_TIMESTAMP"] },
+                    { name: "completed", type: "BOOLEAN", isFK: false, description: "Whether all 4 steps completed", constraints: ["DEFAULT FALSE"] },
+                    { name: "completion_time", type: "DATETIME", isFK: false, description: "When session was completed" }
+                ],
+                sampleData: [
+                    { session_id: "abc-123-def", fsm_state: "strengths", created_at: "2025-01-23 10:30:00", last_activity: "2025-01-23 10:45:00", completed: "false", completion_time: "null" },
+                    { session_id: "xyz-789-ghi", fsm_state: "summary", created_at: "2025-01-23 09:15:00", last_activity: "2025-01-23 09:32:00", completed: "true", completion_time: "2025-01-23 09:32:00" }
+                ],
+                indexes: ["idx_sessions_last_activity", "idx_sessions_completed"]
+            },
+            chat_history: {
+                type: "Message Storage",
+                priority: "critical", 
+                description: "Stores both user messages and bot responses for conversation context",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY", isPK: true, description: "Auto-incrementing message ID", constraints: ["AUTOINCREMENT"] },
+                    { name: "session_id", type: "TEXT NOT NULL", isFK: true, references: "sessions(session_id)", description: "Links to session this message belongs to" },
+                    { name: "role", type: "TEXT NOT NULL", isFK: false, description: "Either 'user' or 'bot'", constraints: ["CHECK(role IN ('user','bot'))"] },
+                    { name: "message", type: "TEXT NOT NULL", isFK: false, description: "The actual message content" },
+                    { name: "ts", type: "DATETIME", isFK: false, description: "When message was sent/received", constraints: ["DEFAULT CURRENT_TIMESTAMP"] }
+                ],
+                sampleData: [
+                    { id: "1", session_id: "abc-123-def", role: "user", message: "Hello, I need some support", ts: "2025-01-23 10:30:15" },
+                    { id: "2", session_id: "abc-123-def", role: "bot", message: "Welcome! Let's talk about your support people...", ts: "2025-01-23 10:30:16" },
+                    { id: "3", session_id: "abc-123-def", role: "user", message: "My family helps me a lot", ts: "2025-01-23 10:31:00" }
+                ],
+                indexes: ["idx_chat_session_ts"]
+            },
+            user_responses: {
+                type: "FSM Step Responses",
+                priority: "critical",
+                description: "Persists user answers for each of the 4 AIMhi Stay Strong steps",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY", isPK: true, description: "Response record ID", constraints: ["AUTOINCREMENT"] },
+                    { name: "session_id", type: "TEXT NOT NULL", isFK: true, references: "sessions(session_id)", description: "Session this response belongs to" },
+                    { name: "step", type: "TEXT NOT NULL", isFK: false, description: "Which of the 4 steps", constraints: ["CHECK(step IN ('support_people','strengths','worries','goals'))"] },
+                    { name: "response", type: "TEXT", isFK: false, description: "User's answer for this step" },
+                    { name: "attempt_count", type: "INTEGER", isFK: false, description: "How many times user tried this step", constraints: ["DEFAULT 0"] },
+                    { name: "created_at", type: "DATETIME", isFK: false, description: "When first answered", constraints: ["DEFAULT CURRENT_TIMESTAMP"] },
+                    { name: "updated_at", type: "DATETIME", isFK: false, description: "When last updated", constraints: ["DEFAULT CURRENT_TIMESTAMP"] }
+                ],
+                sampleData: [
+                    { id: "1", session_id: "abc-123-def", step: "support_people", response: "My family, especially my mum and sister", attempt_count: "1", created_at: "2025-01-23 10:31:00", updated_at: "2025-01-23 10:31:00" },
+                    { id: "2", session_id: "xyz-789-ghi", step: "goals", response: "I want to finish school and get a good job", attempt_count: "2", created_at: "2025-01-23 09:28:00", updated_at: "2025-01-23 09:30:00" }
+                ],
+                indexes: ["idx_user_responses_session", "UNIQUE(session_id, step)"]
+            },
+            risk_detections: {
+                type: "Safety Monitoring",
+                priority: "important",
+                description: "Logs all crisis language detections for safety monitoring and analysis",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY", isPK: true, description: "Detection record ID", constraints: ["AUTOINCREMENT"] },
+                    { name: "session_id", type: "TEXT NOT NULL", isFK: true, references: "sessions(session_id)", description: "Session where risk was detected" },
+                    { name: "trigger_phrase", type: "TEXT NOT NULL", isFK: false, description: "The specific phrase that triggered" },
+                    { name: "user_message", type: "TEXT NOT NULL", isFK: false, description: "Full user message containing risk" },
+                    { name: "detected_at", type: "DATETIME", isFK: false, description: "When risk was detected", constraints: ["DEFAULT CURRENT_TIMESTAMP"] },
+                    { name: "resources_shown", type: "BOOLEAN", isFK: false, description: "Whether crisis resources were shown", constraints: ["DEFAULT TRUE"] }
+                ],
+                sampleData: [
+                    { id: "1", session_id: "def-456-ghi", trigger_phrase: "hurt myself", user_message: "sometimes I want to hurt myself", detected_at: "2025-01-23 11:15:30", resources_shown: "true" }
+                ],
+                indexes: ["idx_risk_detections_session", "idx_risk_detections_date"]
+            },
+            session_summaries: {
+                type: "LLM-Generated Summaries", 
+                priority: "important",
+                description: "AI-generated user profiles and session summaries for personalized responses",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY", isPK: true, description: "Summary record ID", constraints: ["AUTOINCREMENT"] },
+                    { name: "session_id", type: "TEXT NOT NULL", isFK: true, references: "sessions(session_id)", description: "Session being summarized" },
+                    { name: "summary_type", type: "TEXT NOT NULL", isFK: false, description: "Type of summary", constraints: ["CHECK(summary_type IN ('partial','complete','llm_context'))"] },
+                    { name: "summary_data", type: "TEXT NOT NULL", isFK: false, description: "JSON containing summary information" },
+                    { name: "generated_at", type: "DATETIME", isFK: false, description: "When summary was generated", constraints: ["DEFAULT CURRENT_TIMESTAMP"] }
+                ],
+                sampleData: [
+                    { id: "1", session_id: "abc-123-def", summary_type: "partial", summary_data: '{"strengths":["family support","resilient"],"communication_style":"open"}', generated_at: "2025-01-23 10:45:00" }
+                ],
+                indexes: ["idx_summaries_session", "idx_summaries_type"]
+            },
+            analytics: {
+                type: "Usage Metrics",
+                priority: "optional",
+                description: "Anonymous usage metrics for measuring system performance and user engagement",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY", isPK: true, description: "Analytics record ID", constraints: ["AUTOINCREMENT"] },
+                    { name: "event_type", type: "TEXT NOT NULL", isFK: false, description: "Type of event", constraints: ["CHECK(event_type IN ('session_started','session_completed','step_completed','risk_triggered','llm_fallback_used','distilbert_used','rule_based_used'))"] },
+                    { name: "event_data", type: "TEXT", isFK: false, description: "JSON with additional event details" },
+                    { name: "session_count", type: "INTEGER", isFK: false, description: "Number of sessions for aggregation", constraints: ["DEFAULT 1"] },
+                    { name: "timestamp", type: "DATETIME", isFK: false, description: "When event occurred", constraints: ["DEFAULT CURRENT_TIMESTAMP"] }
+                ],
+                sampleData: [
+                    { id: "1", event_type: "session_started", event_data: "null", session_count: "1", timestamp: "2025-01-23 10:30:00" },
+                    { id: "2", event_type: "step_completed", event_data: '{"step":"support_people","attempts":1}', session_count: "1", timestamp: "2025-01-23 10:31:00" }
+                ],
+                indexes: ["idx_analytics_timestamp", "idx_analytics_event_type"]
+            },
+            intent_classifications: {
+                type: "Model Performance Tracking",
+                priority: "optional",
+                description: "Tracks intent classification results for monitoring AI model performance",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY", isPK: true, description: "Classification record ID", constraints: ["AUTOINCREMENT"] },
+                    { name: "session_id", type: "TEXT NOT NULL", isFK: true, references: "sessions(session_id)", description: "Session this classification belongs to" },
+                    { name: "user_message", type: "TEXT NOT NULL", isFK: false, description: "User input that was classified" },
+                    { name: "classified_intent", type: "TEXT NOT NULL", isFK: false, description: "Predicted intent (e.g. 'greeting', 'support_people')" },
+                    { name: "confidence", type: "REAL", isFK: false, description: "Model confidence score (0.0-1.0)" },
+                    { name: "method", type: "TEXT NOT NULL", isFK: false, description: "Which model was used", constraints: ["CHECK(method IN ('distilbert','rule_based','hybrid'))"] },
+                    { name: "fsm_state", type: "TEXT", isFK: false, description: "FSM state when classification occurred" },
+                    { name: "inference_time_ms", type: "INTEGER", isFK: false, description: "How long classification took" },
+                    { name: "created_at", type: "DATETIME", isFK: false, description: "When classification occurred", constraints: ["DEFAULT CURRENT_TIMESTAMP"] }
+                ],
+                sampleData: [
+                    { id: "1", session_id: "abc-123-def", user_message: "My family helps me", classified_intent: "support_people", confidence: "0.92", method: "distilbert", fsm_state: "support_people", inference_time_ms: "45", created_at: "2025-01-23 10:31:00" }
+                ],
+                indexes: ["idx_intent_session", "idx_intent_created"]
+            },
+            system_logs: {
+                type: "Error & Debug Tracking",
+                priority: "optional",
+                description: "System logs for debugging errors and monitoring application health",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY", isPK: true, description: "Log record ID", constraints: ["AUTOINCREMENT"] },
+                    { name: "log_level", type: "TEXT NOT NULL", isFK: false, description: "Severity of log", constraints: ["CHECK(log_level IN ('DEBUG','INFO','WARNING','ERROR','CRITICAL'))"] },
+                    { name: "component", type: "TEXT NOT NULL", isFK: false, description: "System component (e.g. 'router', 'fsm', 'nlp')" },
+                    { name: "message", type: "TEXT NOT NULL", isFK: false, description: "Log message" },
+                    { name: "session_id", type: "TEXT", isFK: true, references: "sessions(session_id)", description: "Session related to log (optional)" },
+                    { name: "error_trace", type: "TEXT", isFK: false, description: "Stack trace for errors" },
+                    { name: "created_at", type: "DATETIME", isFK: false, description: "When log was created", constraints: ["DEFAULT CURRENT_TIMESTAMP"] }
+                ],
+                sampleData: [
+                    { id: "1", log_level: "ERROR", component: "nlp", message: "DistilBERT model failed to load", session_id: "null", error_trace: "FileNotFoundError: models/distilbert_intent/...", created_at: "2025-01-23 10:00:00" }
+                ],
+                indexes: ["idx_logs_timestamp", "idx_logs_level", "idx_logs_session"]
+            }
+        };
+
+        const relationships = [
+            { from: "chat_history", to: "sessions", fromField: "session_id", toField: "session_id", description: "Each message belongs to a conversation session", cardinality: "Many-to-One" },
+            { from: "user_responses", to: "sessions", fromField: "session_id", toField: "session_id", description: "Each step response belongs to a session", cardinality: "Many-to-One" },
+            { from: "risk_detections", to: "sessions", fromField: "session_id", toField: "session_id", description: "Risk events are tracked per session", cardinality: "Many-to-One" },
+            { from: "session_summaries", to: "sessions", fromField: "session_id", toField: "session_id", description: "AI summaries generated for sessions", cardinality: "Many-to-One" },
+            { from: "intent_classifications", to: "sessions", fromField: "session_id", toField: "session_id", description: "Intent predictions tracked per session", cardinality: "Many-to-One" },
+            { from: "system_logs", to: "sessions", fromField: "session_id", toField: "session_id", description: "System logs may reference sessions", cardinality: "Many-to-One (Optional)" }
+        ];
+
+        function getColumnIcon(column) {
+            if (column.isPK) return '🔑';
+            if (column.isFK) return '🔗';
+            return '📝';
+        }
+
+        function getColumnIconClass(column) {
+            if (column.isPK) return 'pk-icon';
+            if (column.isFK) return 'fk-icon';
+            return 'regular-icon';
+        }
+
+        function renderSampleData(tableName, sampleData) {
+            if (!sampleData || sampleData.length === 0) return '';
+            
+            const columns = Object.keys(sampleData[0]);
+            
+            return `
+                <div class="sample-data" id="sample-${tableName}">
+                    <h4>📊 Sample Data</h4>
+                    <table class="sample-table">
+                        <thead>
+                            <tr>
+                                ${columns.map(col => `<th>${col}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sampleData.map(row => `
+                                <tr>
+                                    ${columns.map(col => `<td>${row[col] || 'null'}</td>`).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderIndexes(indexes) {
+            if (!indexes || indexes.length === 0) return '';
+            
+            return `
+                <div class="indexes-info">
+                    <h5>⚡ Indexes</h5>
+                    ${indexes.map(index => `<div class="index-item">• ${index}</div>`).join('')}
+                </div>
+            `;
+        }
+
+        function renderTable(tableName, tableData) {
+            return `
+                <div class="table-card fade-in" data-table="${tableName}">
+                    <div class="table-header">
+                        <div class="table-actions">
+                            <button class="action-btn" onclick="toggleSampleData('${tableName}')" title="Toggle Sample Data">📊</button>
+                            <button class="action-btn" onclick="highlightRelationships('${tableName}')" title="Highlight Relationships">🔗</button>
+                        </div>
+                        <div class="priority-badge priority-${tableData.priority}">${tableData.priority.toUpperCase()}</div>
+                        <h3>${tableName}</h3>
+                        <div class="table-type">${tableData.type}</div>
+                        <div class="table-description">${tableData.description}</div>
+                    </div>
+                    <div class="table-body">
+                        ${tableData.columns.map(column => `
+                            <div class="column">
+                                <div class="column-icon ${getColumnIconClass(column)}">${getColumnIcon(column)}</div>
+                                <div class="column-info">
+                                    <div class="column-name">${column.name}</div>
+                                    <div class="column-type">${column.type}</div>
+                                    <div class="column-description">${column.description}</div>
+                                    ${column.references ? `<div class="fk-reference">→ ${column.references}</div>` : ''}
+                                    ${column.constraints ? `
+                                        <div class="constraints-list">
+                                            ${column.constraints.map(constraint => `<span class="constraint-item">${constraint}</span>`).join('')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${renderIndexes(tableData.indexes)}
+                    ${renderSampleData(tableName, tableData.sampleData)}
+                    <button class="expand-btn" onclick="toggleSampleData('${tableName}')">
+                        ${tableData.sampleData ? 'Toggle Sample Data' : 'No Sample Data'}
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderRelationships() {
+            return relationships.map(rel => `
+                <div class="relationship-item" data-from="${rel.from}" data-to="${rel.to}">
+                    <div class="table-ref">${rel.from}</div>
+                    <div class="relationship-arrow">→</div>
+                    <div class="table-ref">${rel.to}</div>
+                    <div class="relationship-description">
+                        <strong>${rel.cardinality}</strong>: ${rel.description}
+                        <br><small>${rel.fromField} → ${rel.toField}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleSampleData(tableName) {
+            const sampleData = document.getElementById(`sample-${tableName}`);
+            if (sampleData) {
+                sampleData.classList.toggle('show');
+            }
+        }
+
+        function highlightRelationships(tableName) {
+            // Clear previous highlights
+            document.querySelectorAll('.table-card, .relationship-item').forEach(el => {
+                el.style.border = '';
+                el.style.background = '';
+            });
+
+            // Highlight current table
+            document.querySelector(`[data-table="${tableName}"]`).style.border = '3px solid #4CAF50';
+
+            // Highlight related relationships
+            document.querySelectorAll(`.relationship-item[data-from="${tableName}"], .relationship-item[data-to="${tableName}"]`).forEach(el => {
+                el.style.background = '#e8f5e8';
+                el.style.border = '2px solid #4CAF50';
+            });
+
+            // Highlight related tables
+            relationships.forEach(rel => {
+                if (rel.from === tableName) {
+                    const toTable = document.querySelector(`[data-table="${rel.to}"]`);
+                    if (toTable) toTable.style.border = '2px solid #ff9800';
+                }
+                if (rel.to === tableName) {
+                    const fromTable = document.querySelector(`[data-table="${rel.from}"]`);
+                    if (fromTable) fromTable.style.border = '2px solid #ff9800';
+                }
+            });
+
+            // Clear highlights after 5 seconds
+            setTimeout(() => {
+                document.querySelectorAll('.table-card, .relationship-item').forEach(el => {
+                    el.style.border = '';
+                    el.style.background = '';
+                });
+            }, 5000);
+        }
+
+        function initializeVisualization() {
+            const schemaGrid = document.getElementById('schemaGrid');
+            const relationshipsList = document.getElementById('relationshipsList');
+
+            // Render tables
+            let tableHtml = '';
+            for (const [tableName, tableData] of Object.entries(databaseSchema)) {
+                tableHtml += renderTable(tableName, tableData);
+            }
+            schemaGrid.innerHTML = tableHtml;
+
+            // Render relationships
+            relationshipsList.innerHTML = renderRelationships();
+
+            // Add staggered animation
+            const tableCards = document.querySelectorAll('.table-card');
+            tableCards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.1}s`;
+            });
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initializeVisualization);
+
+        // Add click effects
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.table-card')) {
+                const card = e.target.closest('.table-card');
+                card.style.transform = 'scale(1.02)';
+                setTimeout(() => {
+                    card.style.transform = '';
+                }, 200);
+            }
+        });
+    </script>
+</body>
+</html>

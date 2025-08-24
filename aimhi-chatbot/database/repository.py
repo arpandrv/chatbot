@@ -1,10 +1,10 @@
 import sqlite3
 import os
 
-# Use absolute path for database file
+# Use absolute path for database file in database/ folder
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(script_dir)
-default_db_path = os.path.join(project_root, 'chat_history.db')
+default_db_path = os.path.join(script_dir, 'chat_history.db')  # Put in database/ folder
 
 # Handle both SQLite file paths and SQLAlchemy URLs
 database_url = os.getenv('DATABASE_URL', default_db_path)

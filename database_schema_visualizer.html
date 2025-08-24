@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIMhi-Y Chatbot Database Schema Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: auto;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .schema-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .table-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .table-card.expanded {
+            grid-column: 1 / -1;
+            max-width: none;
+        }
+
+        .table-header {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .table-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            z-index: 0;
+        }
+
+        .table-header h3 {
+            font-size: 1.4em;
+            margin-bottom: 5px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .table-type {
+            font-size: 0.9em;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .priority-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: bold;
+            z-index: 2;
+        }
+
+        .priority-critical { background: #ff4444; color: white; }
+        .priority-important { background: #ff9800; color: white; }
+        .priority-optional { background: #2196F3; color: white; }
+
+        .table-body {
+            padding: 0;
+        }
+
+        .column {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s ease;
+        }
+
+        .column:hover {
+            background-color: #f8f9fa;
+        }
+
+        .column:last-child {
+            border-bottom: none;
+        }
+
+        .column-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .pk-icon { color: #ffd700; }
+        .fk-icon { color: #ff6b6b; }
+        .regular-icon { color: #4ecdc4; }
+
+        .column-info {
+            flex-grow: 1;
+        }
+
+        .column-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .column-type {
+            font-size: 0.85em;
+            color: #7f8c8d;
+        }
+
+        .relationships {
+            margin-top: 30px;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .relationships h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .relationship-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .sample-data {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #17a2b8;
+            display: none;
+        }
+
+        .sample-data.show {
+            display: block;
+        }
+
+        .sample-data h4 {
+            color: #17a2b8;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .sample-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8em;
+            margin-top: 8px;
+        }
+
+        .sample-table th,
+        .sample-table td {
+            padding: 6px 8px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+
+        .sample-table th {
+            background: #17a2b8;
+            color: white;
+            font-weight: 600;
+        }
+
+        .sample-table td {
+            background: white;
+        }
+
+        .expand-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-top: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .expand-btn:hover {
+            background: #138496;
+            transform: scale(1.05);
+        }
+
+        .relationship-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            border-radius: 1px;
+            z-index: 10;
+        }
+
+        .relationship-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 8px solid #4CAF50;
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+            right: -8px;
+            top: -1px;
+        }
+
+        .connection-point {
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+            position: absolute;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .table-actions {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 3;
+        }
+
+        .action-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            margin-right: 5px;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+
+        .constraints-list {
+            margin-top: 10px;
+            font-size: 0.8em;
+        }
+
+        .constraint-item {
+            display: inline-block;
+            background: #e9ecef;
+            color: #495057;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin: 2px;
+            font-size: 0.7em;
+        }
+
+        .fk-reference {
+            color: #dc3545;
+            font-weight: 600;
+            font-size: 0.75em;
+            margin-top: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .schema-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .legend {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗄️ AIMhi-Y Chatbot Database Schema</h1>
+            <p>Interactive visualization of the enhanced v2 database schema</p>
+        </div>
+
+        <div class="schema-grid" id="schemaGrid">
+            <!-- Tables will be dynamically generated here -->
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">8</div>
+                <div class="stat-label">Total Tables</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">45+</div>
+                <div class="stat-label">Total Columns</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">12</div>
+                <div class="stat-label">Indexes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">3</div>
+                <div class="stat-label">Views</div>
+            </div>
+        </div>
+
+        <div class="relationships">
+            <h2>🔗 Table Relationships</h2>
+            <div id="relationshipsList">
+                <!-- Relationships will be generated here -->
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color pk-icon" style="background: #ffd700;"></div>
+                <span>Primary Key</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color fk-icon" style="background: #ff6b6b;"></div>
+                <span>Foreign Key</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color regular-icon" style="background: #4ecdc4;"></div>
+                <span>Regular Column</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const databaseSchema = {
+            sessions: {
+                type: "Core Session Management",
+                priority: "critical",
+                description: "Manages user sessions and conversation state persistence",
+                columns: [
+                    { name: "session_id", type: "TEXT PRIMARY KEY", isPK: true, description: "Unique identifier for each conversation" },
+                    { name: "fsm_state", type: "TEXT NOT NULL DEFAULT 'welcome'", isFK: false, description: "Current step in 4-step flow", constraints: ["CHECK(fsm_state IN ('welcome','support_people','strengths','worries','goals','summary'))"] },
+                    { name: "created_at", type: "DATETIME DEFAULT CURRENT_TIMESTAMP", isFK: false, description: "When session started" },
+                    { name: "last_activity", type: "DATETIME DEFAULT CURRENT_TIMESTAMP", isFK: false, description: "Last user interaction" },
+                    { name: "completed", type: "BOOLEAN DEFAULT FALSE", isFK: false, description: "Whether user completed all 4 steps" },
+                    { name: "completion_time", type: "DATETIME", isFK: false, description: "When session was completed" }
+                ],
+                sampleData: [
+                    { session_id: "abc-123-def", fsm_state: "strengths", created_at: "2025-01-23 10:30:00", last_activity: "2025-01-23 10:45:00", completed: false, completion_time: null },
+                    { session_id: "xyz-789-ghi", fsm_state: "summary", created_at: "2025-01-23 09:15:00", last_activity: "2025-01-23 09:32:00", completed: true, completion_time: "2025-01-23 09:32:00" }
+                ],
+                indexes: ["idx_sessions_last_activity", "idx_sessions_completed"]
+            },
+            chat_history: {
+                type: "Message Storage",
+                priority: "critical",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY AUTOINCREMENT", isPK: true },
+                    { name: "session_id", type: "TEXT NOT NULL", isFK: true, references: "sessions(session_id)" },
+                    { name: "role", type: "TEXT CHECK(role IN ('user','bot'))", isFK: false },
+                    { name: "message", type: "TEXT NOT NULL", isFK: false },
+                    { name: "ts", type: "DATETIME DEFAULT CURRENT_TIMESTAMP", isFK: false }
+                ]
+            },
+            user_responses: {
+                type: "FSM Step Responses",
+                priority: "critical",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY AUTOINCREMENT", isPK: true },
+                    { name: "session_id", type: "TEXT NOT NULL", isFK: true, references: "sessions(session_id)" },
+                    { name: "step", type: "TEXT CHECK(step IN (...))", isFK: false },
+                    { name: "response", type: "TEXT", isFK: false },
+                    { name: "attempt_count", type: "INTEGER DEFAULT 0", isFK: false },
+                    { name: "created_at", type: "DATETIME DEFAULT CURRENT_TIMESTAMP", isFK: false },
+                    { name: "updated_at", type: "DATETIME DEFAULT CURRENT_TIMESTAMP", isFK: false }
+                ]
+            },
+            risk_detections: {
+                type: "Safety Monitoring",
+                priority: "important",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY AUTOINCREMENT", isPK: true },
+                    { name: "session_id", type: "TEXT NOT NULL", isFK: true, references: "sessions(session_id)" },
+                    { name: "trigger_phrase", type: "TEXT NOT NULL", isFK: false },
+                    { name: "user_message", type: "TEXT NOT NULL", isFK: false },
+                    { name: "detected_at", type: "DATETIME DEFAULT CURRENT_TIMESTAMP", isFK: false },
+                    { name: "resources_shown", type: "BOOLEAN DEFAULT TRUE", isFK: false }
+                ]
+            },
+            session_summaries: {
+                type: "LLM-Generated Summaries",
+                priority: "important",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY AUTOINCREMENT", isPK: true },
+                    { name: "session_id", type: "TEXT NOT NULL", isFK: true, references: "sessions(session_id)" },
+                    { name: "summary_type", type: "TEXT CHECK(summary_type IN (...))", isFK: false },
+                    { name: "summary_data", type: "TEXT NOT NULL", isFK: false },
+                    { name: "generated_at", type: "DATETIME DEFAULT CURRENT_TIMESTAMP", isFK: false }
+                ]
+            },
+            analytics: {
+                type: "Usage Metrics",
+                priority: "optional",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY AUTOINCREMENT", isPK: true },
+                    { name: "event_type", type: "TEXT NOT NULL CHECK(...)", isFK: false },
+                    { name: "event_data", type: "TEXT (JSON)", isFK: false },
+                    { name: "session_count", type: "INTEGER DEFAULT 1", isFK: false },
+                    { name: "timestamp", type: "DATETIME DEFAULT CURRENT_TIMESTAMP", isFK: false }
+                ]
+            },
+            intent_classifications: {
+                type: "Model Performance Tracking",
+                priority: "optional",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY AUTOINCREMENT", isPK: true },
+                    { name: "session_id", type: "TEXT NOT NULL", isFK: true, references: "sessions(session_id)" },
+                    { name: "user_message", type: "TEXT NOT NULL", isFK: false },
+                    { name: "classified_intent", type: "TEXT NOT NULL", isFK: false },
+                    { name: "confidence", type: "REAL", isFK: false },
+                    { name: "method", type: "TEXT CHECK(method IN (...))", isFK: false },
+                    { name: "fsm_state", type: "TEXT", isFK: false },
+                    { name: "inference_time_ms", type: "INTEGER", isFK: false },
+                    { name: "created_at", type: "DATETIME DEFAULT CURRENT_TIMESTAMP", isFK: false }
+                ]
+            },
+            system_logs: {
+                type: "Error & Debug Tracking",
+                priority: "optional",
+                columns: [
+                    { name: "id", type: "INTEGER PRIMARY KEY AUTOINCREMENT", isPK: true },
+                    { name: "log_level", type: "TEXT CHECK(log_level IN (...))", isFK: false },
+                    { name: "component", type: "TEXT NOT NULL", isFK: false },
+                    { name: "message", type: "TEXT NOT NULL", isFK: false },
+                    { name: "session_id", type: "TEXT", isFK: true, references: "sessions(session_id)" },
+                    { name: "error_trace", type: "TEXT", isFK: false },
+                    { name: "created_at", type: "DATETIME DEFAULT CURRENT_TIMESTAMP", isFK: false }
+                ]
+            }
+        };
+
+        const relationships = [
+            { from: "chat_history", to: "sessions", description: "Each message belongs to a session" },
+            { from: "user_responses", to: "sessions", description: "Each response belongs to a session" },
+            { from: "risk_detections", to: "sessions", description: "Each risk detection belongs to a session" },
+            { from: "session_summaries", to: "sessions", description: "Each summary belongs to a session" },
+            { from: "intent_classifications", to: "sessions", description: "Each intent classification belongs to a session" },
+            { from: "system_logs", to: "sessions", description: "Each log entry may belong to a session" }
+        ];
+
+        function getColumnIcon(column) {
+            if (column.isPK) return '🔑';
+            if (column.isFK) return '🔗';
+            return '📝';
+        }
+
+        function getColumnIconClass(column) {
+            if (column.isPK) return 'pk-icon';
+            if (column.isFK) return 'fk-icon';
+            return 'regular-icon';
+        }
+
+        function renderTable(tableName, tableData) {
+            return `
+                <div class="table-card fade-in">
+                    <div class="table-header">
+                        <div class="priority-badge priority-${tableData.priority}">${tableData.priority.toUpperCase()}</div>
+                        <h3>${tableName}</h3>
+                        <div class="table-type">${tableData.type}</div>
+                    </div>
+                    <div class="table-body">
+                        ${tableData.columns.map(column => `
+                            <div class="column">
+                                <div class="column-icon ${getColumnIconClass(column)}">${getColumnIcon(column)}</div>
+                                <div class="column-info">
+                                    <div class="column-name">${column.name}</div>
+                                    <div class="column-type">${column.type}</div>
+                                    ${column.references ? `<div class="column-type">→ ${column.references}</div>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderRelationships() {
+            return relationships.map(rel => `
+                <div class="relationship-item">
+                    <strong>${rel.from}</strong> → <strong>${rel.to}</strong>: ${rel.description}
+                </div>
+            `).join('');
+        }
+
+        function initializeVisualization() {
+            const schemaGrid = document.getElementById('schemaGrid');
+            const relationshipsList = document.getElementById('relationshipsList');
+
+            // Render tables
+            let tableHtml = '';
+            for (const [tableName, tableData] of Object.entries(databaseSchema)) {
+                tableHtml += renderTable(tableName, tableData);
+            }
+            schemaGrid.innerHTML = tableHtml;
+
+            // Render relationships
+            relationshipsList.innerHTML = renderRelationships();
+
+            // Add staggered animation
+            const tableCards = document.querySelectorAll('.table-card');
+            tableCards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.1}s`;
+            });
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initializeVisualization);
+
+        // Add some interactivity
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.table-card')) {
+                const card = e.target.closest('.table-card');
+                card.style.transform = 'scale(1.02)';
+                setTimeout(() => {
+                    card.style.transform = '';
+                }, 200);
+            }
+        });
+    </script>
+</body>
+</html>

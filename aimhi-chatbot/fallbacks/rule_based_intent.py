@@ -2,12 +2,17 @@ import spacy
 from rapidfuzz import fuzz
 import re
 
+# Safe spaCy loading without auto-download for production safety
 try:
     nlp = spacy.load('en_core_web_sm')
-except:
-    import subprocess
-    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
-    nlp = spacy.load('en_core_web_sm')
+    HAS_SPACY = True
+except OSError:
+    # spaCy model not available - graceful degradation
+    nlp = None
+    HAS_SPACY = False
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning("spaCy model 'en_core_web_sm' not found. Install with: python -m spacy download en_core_web_sm")
 
 # Restore the comprehensive intent patterns - this was valuable linguistic knowledge
 INTENT_PATTERNS = {
@@ -81,7 +86,7 @@ INTENT_PATTERNS = {
             r"^(g'day|howdy|greetings)",
         ]
     },
-    'affirmation': {
+    'affirmative': {
         'keywords': ['yes', 'yeah', 'yep', 'sure', 'okay', 'ok', 'alright', 
                     'definitely', 'absolutely', 'agree', 'correct', 'right'],
         'patterns': [
@@ -90,7 +95,7 @@ INTENT_PATTERNS = {
             r'^(definitely|absolutely|certainly)\b',
         ]
     },
-    'negation': {
+    'negative': {
         'keywords': ['no', 'nope', 'not', "don't", "doesn't", "won't", "can't",
                     'never', 'nothing', 'none', 'nobody'],
         'patterns': [
@@ -120,7 +125,7 @@ INTENT_PATTERNS = {
     }
 }
 
-def classify_intent(text, current_step=None):
+def classify_intent_rule_based(text, current_step=None):
     """
     Hybrid intent classification: comprehensive patterns + context awareness
     Args:
@@ -132,7 +137,6 @@ def classify_intent(text, current_step=None):
         return 'unclear', 0.0
     
     text_lower = text.lower().strip()
-    doc = nlp(text_lower)
     
     intent_scores = {}
     
@@ -297,6 +301,13 @@ def classify_intent(text, current_step=None):
         if confidence < 0.2:
             return 'unclear', confidence
         
+        # Normalize intent names to match router expectations
+        intent_mapping = {
+            'affirmative': 'affirmation',
+            'negative': 'negation'
+        }
+        intent_name = intent_mapping.get(intent_name, intent_name)
+        
         return intent_name, confidence
     
     return 'unclear', 0.0
@@ -311,6 +322,6 @@ def get_intent_for_step(current_step):
         'strengths': 'strengths', 
         'worries': 'worries',
         'goals': 'goals',
-        'summary': 'affirmation'
+        'summary': 'affirmation'  # Normalized name
     }
     return step_to_intent.get(current_step, 'unclear')
