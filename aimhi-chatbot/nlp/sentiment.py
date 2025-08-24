@@ -1,241 +1,122 @@
-"""
-Sentiment Analysis Module
-=========================
-Analyzes user sentiment to help select appropriate response tone.
-Uses Twitter-RoBERTa model trained on 124M tweets for accurate sentiment detection
-of informal language, slang, and youth expressions.
-"""
+# chatbot/aimhi-chatbot/nlp/sentiment.py
 
 import logging
-from typing import Tuple, Dict, Optional
-import warnings
-warnings.filterwarnings("ignore")
+import os
+from typing import Tuple, Dict
+
+# Use a try-except block for optional dependencies.
+try:
+    import torch
+    import torch.nn.functional as F
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+
+# Import the fallback function which has no heavy dependencies.
+from fallbacks.keyword_sentiment import analyze_sentiment_keywords
 
 logger = logging.getLogger(__name__)
 
-# Try to import transformer libraries
-try:
-    from transformers import AutoTokenizer, AutoModelForSequenceClassification
-    import torch
-    import torch.nn.functional as F
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    logger.warning("Transformers not available. Install with: pip install transformers torch")
-    TRANSFORMERS_AVAILABLE = False
-
 class TwitterRoBERTaSentiment:
     """
-    Twitter-RoBERTa sentiment analyzer optimized for social media and informal text.
-    Singleton pattern for efficient model loading.
+    Singleton class for the Twitter-RoBERTa sentiment analyzer.
+    Ensures the large model is loaded into memory only once.
     """
-    
     _instance = None
     
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            cls._instance = super(TwitterRoBERTaSentiment, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
-    
+
     def __init__(self):
         if self._initialized:
             return
             
         self.model = None
         self.tokenizer = None
+        self.labels = []
         self.device = None
-        self.labels = ['negative', 'neutral', 'positive']
+
+        if not TRANSFORMERS_AVAILABLE:
+            logger.warning("Transformers library not found. Sentiment analysis will rely on keyword fallback.")
+            self._initialized = True
+            return
+
+        try:
+            model_name = "cardiffnlp/twitter-roberta-base-sentiment-latest"
+            logger.info(f"Attempting to load Twitter-RoBERTa model: {model_name}")
+
+            config = AutoConfig.from_pretrained(model_name)
+
+            # --- Robust Label Loading (from code-samir) ---
+            if getattr(config, "id2label", None):
+                self.labels = [config.id2label[i] for i in sorted(config.id2label.keys())]
+                logger.info(f"Loaded labels from model config: {self.labels}")
+            else:
+                self.labels = ["negative", "neutral", "positive"]
+                logger.warning(f"id2label not found in model config. Using default labels: {self.labels}")
+
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
+            self.model.to(self.device)
+            self.model.eval()
+
+            logger.info(f"Twitter-RoBERTa model loaded successfully on device: {self.device}")
+
+        except Exception as e:
+            logger.error(f"Failed to load Twitter-RoBERTa model: {e}. Will use keyword fallback.", exc_info=True)
+            self.model = None # Ensure fallback is used
         
-        if TRANSFORMERS_AVAILABLE:
-            try:
-                self.model_name = "cardiffnlp/twitter-roberta-base-sentiment-latest"
-                logger.info(f"Loading Twitter-RoBERTa model: {self.model_name}")
-                
-                # Set device
-                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                
-                # Load tokenizer and model
-                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-                self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
-                self.model.to(self.device)
-                self.model.eval()
-                
-                logger.info(f"Twitter-RoBERTa loaded successfully on {self.device}")
-                self._initialized = True
-                
-            except Exception as e:
-                logger.error(f"Failed to load Twitter-RoBERTa: {e}")
-                self.model = None
-                self.tokenizer = None
-        else:
-            logger.warning("Transformers not available, using fallback")
-    
-    def preprocess_text(self, text: str) -> str:
+        self._initialized = True
+
+    def analyze(self, text: str) -> Tuple[str, float, str]:
         """
-        Preprocess text for Twitter-RoBERTa.
-        Handles @mentions, URLs, and special characters.
-        """
-        if not text or not text.strip():
-            return ""
-        
-        import re
-        # Replace usernames with @user token
-        text = re.sub(r'@\w+', '@user', text)
-        # Replace URLs with http token  
-        text = re.sub(r'http\S+|www.\S+', 'http', text)
-        
-        return text.strip()
-    
-    def analyze(self, text: str) -> Tuple[str, float]:
-        """
-        Analyze sentiment using Twitter-RoBERTa.
-        Falls back to keyword matching if model unavailable.
+        Analyzes the sentiment of a given text.
+        Returns a tuple of (label, confidence, method).
         """
         if not self.model or not self.tokenizer:
-            # Fallback to keyword matching
-            return fallback_keyword_sentiment(text)
+            label, confidence = analyze_sentiment_keywords(text)
+            return label, confidence, 'keyword_fallback'
         
-        # Preprocess
-        processed_text = self.preprocess_text(text)
-        
-        if not processed_text:
-            return 'neutral', 0.5
-        
+        if not text or not text.strip():
+            return 'neutral', 0.5, 'no_input'
+
         try:
-            # Tokenize
             inputs = self.tokenizer(
-                processed_text,
-                return_tensors="pt",
-                truncation=True,
-                padding=True,
-                max_length=512
+                text, return_tensors="pt", truncation=True, padding=True, max_length=512
             ).to(self.device)
-            
-            # Get predictions
+
             with torch.no_grad():
                 outputs = self.model(**inputs)
-                logits = outputs.logits
-                probs = F.softmax(logits, dim=-1).cpu().numpy()[0]
+                probs = F.softmax(outputs.logits, dim=-1).cpu().numpy()[0]
             
-            # Get predicted label and confidence
-            predicted_idx = probs.argmax()
-            predicted_label = self.labels[predicted_idx]
-            confidence = float(probs[predicted_idx])
+            prediction_idx = int(probs.argmax())
+            # Normalize the label to lowercase to be consistent (e.g., 'Positive' -> 'positive')
+            predicted_label = self.labels[prediction_idx].lower()
+            confidence = float(probs[prediction_idx])
             
-            return predicted_label, confidence
-            
+            return predicted_label, confidence, 'twitter_roberta'
+
         except Exception as e:
-            logger.error(f"Error in Twitter-RoBERTa analysis: {e}")
-            return fallback_keyword_sentiment(text)
+            logger.error(f"Error during RoBERTa analysis: {e}. Falling back to keywords.", exc_info=True)
+            label, confidence = analyze_sentiment_keywords(text)
+            return label, confidence, 'keyword_fallback_on_error'
 
 
-def fallback_keyword_sentiment(text: str) -> Tuple[str, float]:
+# --- Public API Function ---
+def analyze_sentiment(text: str) -> Dict[str, any]:
     """
-    Fallback keyword-based sentiment analysis.
-    Used when Twitter-RoBERTa is unavailable.
+    Analyzes user sentiment using the singleton Twitter-RoBERTa instance.
     """
-    if not text:
-        return 'neutral', 0.5
-    
-    text_lower = text.lower()
-    
-    positive_keywords = ['good', 'great', 'happy', 'love', 'excited', 'awesome', 
-                        'wonderful', 'amazing', 'fantastic', 'excellent', 'deadly',
-                        'stoked', 'lit', 'sweet']
-    negative_keywords = ['bad', 'sad', 'worried', 'stressed', 'angry', 'hate',
-                        'terrible', 'awful', 'horrible', 'upset', 'shame', 'crook',
-                        'cooked', 'mid']
-    
-    # Count keyword matches
-    positive_count = sum(1 for word in positive_keywords if word in text_lower)
-    negative_count = sum(1 for word in negative_keywords if word in text_lower)
-    
-    # Determine sentiment
-    if positive_count > negative_count:
-        confidence = min(positive_count * 0.3, 1.0)
-        return 'positive', confidence
-    elif negative_count > positive_count:
-        confidence = min(negative_count * 0.3, 1.0)
-        return 'negative', confidence
-    else:
-        return 'neutral', 0.5
+    analyzer_instance = TwitterRoBERTaSentiment()
+    label, confidence, method = analyzer_instance.analyze(text)
 
-
-# Global instance
-_roberta_analyzer = None
-
-def analyze_sentiment(text: str) -> Tuple[str, float]:
-    """
-    Main sentiment analysis function using Twitter-RoBERTa.
-    
-    Args:
-        text: User input message
-        
-    Returns:
-        tuple: (sentiment_label, confidence)
-            sentiment_label: 'positive', 'negative', or 'neutral'
-            confidence: float between 0 and 1
-    """
-    global _roberta_analyzer
-    if _roberta_analyzer is None:
-        _roberta_analyzer = TwitterRoBERTaSentiment()
-    
-    return _roberta_analyzer.analyze(text)
-
-
-def get_sentiment_label(text: str) -> str:
-    """
-    Simple wrapper that returns just the sentiment label.
-    Maintains backward compatibility with existing code.
-    
-    Args:
-        text: User input message
-        
-    Returns:
-        str: 'positive', 'negative', or 'neutral'
-    """
-    sentiment, _ = analyze_sentiment(text)
-    return sentiment
-
-
-def get_sentiment_details(text: str) -> Dict:
-    """
-    Get detailed sentiment analysis including confidence scores.
-    
-    Args:
-        text: User input message
-        
-    Returns:
-        dict: Contains label, confidence, and method used
-    """
-    sentiment, confidence = analyze_sentiment(text)
-    
     return {
-        'label': sentiment,
+        'label': label,
         'confidence': confidence,
-        'method': 'twitter-roberta' if TRANSFORMERS_AVAILABLE else 'keyword-fallback'
+        'method': method
     }
-
-
-# For testing purposes
-if __name__ == "__main__":
-    test_phrases = [
-        "I love this!",
-        "I hate everything",
-        "It's okay I guess",
-        "That's deadly, bro!",
-        "I'm absolutely cooked",
-        "This is so lit!",
-        "I'm not happy at all",
-        "Never been better"
-    ]
-    
-    print("Testing Sentiment Analysis:")
-    print("=" * 50)
-    
-    for phrase in test_phrases:
-        result = get_sentiment_details(phrase)
-        print(f"Text: '{phrase}'")
-        print(f"  Sentiment: {result['label']} (confidence: {result['confidence']:.3f})")
-        print(f"  Method: {result['method']}")
-        print()
