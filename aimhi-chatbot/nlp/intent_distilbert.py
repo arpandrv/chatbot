@@ -98,23 +98,19 @@ class RoBERTaZeroShotClassifier:
             self._load_model()
             RoBERTaZeroShotClassifier._initialized = True
 
-    def _find_model_path(self) -> Optional[Path]:
-        """Finds the model path by searching common locations."""
-        current_dir = Path(__file__).parent
-        possible_paths = [
-            current_dir / '..' / 'ai_models' / 'FacebookAI_roberta-large-mnli',
-            current_dir / '..' / 'ai_models' / 'roberta-large-mnli',
-        ]
-        custom_path = os.getenv('ROBERTA_MODEL_PATH')
-        if custom_path:
-            possible_paths.insert(0, Path(custom_path))
-
-        for path in possible_paths:
-            if path.exists() and path.is_dir():
-                logger.info(f"Found RoBERTa model directory at: {path}")
-                return path
-        logger.warning(f"RoBERTa model not found in any of the searched locations.")
-        return None
+    def _get_model_path(self) -> Path:
+        """Get model path with clear expectations."""
+        
+        # Single source of truth
+        model_path = Path(os.getenv('ROBERTA_MODEL_PATH', 'ai_models/roberta-large-mnli'))
+        
+        if not model_path.exists():
+            raise FileNotFoundError(
+                f"RoBERTa model not found at {model_path}. "
+                f"Set ROBERTA_MODEL_PATH environment variable or ensure model is at default location."
+            )
+        
+        return model_path
 
     def _load_model(self):
         """Loads the ONNX model and tokenizer with comprehensive error handling."""
@@ -122,8 +118,10 @@ class RoBERTaZeroShotClassifier:
             logger.error("Cannot load RoBERTa model due to missing libraries.")
             return
 
-        model_dir = self._find_model_path()
-        if not model_dir:
+        try:
+            model_dir = self._get_model_path()
+        except FileNotFoundError as e:
+            logger.error(str(e))
             return
 
         onnx_path = model_dir / 'onnx' / 'model_int8.onnx'
@@ -252,34 +250,45 @@ def get_roberta_info() -> Dict[str, Any]:
 
 def classify_intent(text: str, current_step: Optional[str] = None) -> Dict[str, Any]:
     """
-    Performs hybrid intent classification, prioritizing RoBERTa and falling back to rules.
-    This is the main function to be used by the application router.
+    Simple, predictable intent classification with single fallback path.
+    Priority order: RoBERTa → Rule-based → Unclear
     """
     if not text or not text.strip():
         return {'label': 'unclear', 'confidence': 0.0, 'method': 'empty_input'}
-
-    if is_roberta_available():
-        intent, confidence = _roberta_classifier_instance.classify(text, current_step)
-        method = 'roberta_zero_shot'
-        if confidence < 0.4: # Low confidence, try rule-based
-            try:
-                from fallbacks.rule_based_intent import classify_intent_rule_based
-                rule_intent, rule_conf = classify_intent_rule_based(text, current_step)
-                if rule_conf > confidence * 1.2:
-                    intent, confidence, method = rule_intent, rule_conf, 'rule_based_override'
-            except Exception as e:
-                logger.warning(f"Could not execute rule-based fallback: {e}")
-    else: # RoBERTa unavailable, use rule-based as primary
-        logger.info("RoBERTa unavailable, using rule-based classification.")
+    
+    # Priority order: use the first available classifier
+    classifiers = [
+        ('roberta_zero_shot', _try_roberta_classify),
+        ('rule_based', _try_rule_classify),
+    ]
+    
+    for method, classifier_func in classifiers:
         try:
-            from fallbacks.rule_based_intent import classify_intent_rule_based
-            intent, confidence = classify_intent_rule_based(text, current_step)
-            method = 'rule_based_primary'
+            result = classifier_func(text, current_step)
+            result['method'] = method
+            # Apply intent mapping before returning
+            intent_mapping = {'affirmative': 'affirmation', 'negative': 'negation'}
+            result['label'] = intent_mapping.get(result['label'], result['label'])
+            return result
         except Exception as e:
-            logger.error(f"All classification methods failed: {e}")
-            return {'label': 'unclear', 'confidence': 0.0, 'method': 'error'}
+            logger.warning(f"Classifier {method} failed: {e}")
+            continue
+    
+    # All classifiers failed
+    return {'label': 'unclear', 'confidence': 0.0, 'method': 'all_failed'}
 
-    intent_mapping = {'affirmative': 'affirmation', 'negative': 'negation'}
-    final_intent = intent_mapping.get(intent, intent)
 
-    return {'label': final_intent, 'confidence': float(confidence), 'method': method}
+def _try_roberta_classify(text: str, current_step: Optional[str]) -> Dict[str, Any]:
+    """Try RoBERTa classification - raises exception if not available."""
+    if not is_roberta_available():
+        raise RuntimeError("RoBERTa not available")
+    
+    intent, confidence = _roberta_classifier_instance.classify(text, current_step)
+    return {'label': intent, 'confidence': confidence}
+
+
+def _try_rule_classify(text: str, current_step: Optional[str]) -> Dict[str, Any]:
+    """Try rule-based classification - should always work."""
+    from fallbacks.rule_based_intent import classify_intent_rule_based
+    intent, confidence = classify_intent_rule_based(text, current_step)
+    return {'label': intent, 'confidence': confidence}

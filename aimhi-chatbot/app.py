@@ -106,21 +106,8 @@ def index():
 
 @app.route("/health")
 def health_check():
-    """Provides a health check endpoint for monitoring services."""
-    db_status = 'disconnected'
-    try:
-        # Use the efficient per-request connection
-        db = get_db()
-        db.execute("SELECT 1")
-        db_status = 'connected'
-    except Exception as e:
-        logger.error(f"Health check database error: {e}")
-
-    return jsonify({
-        "status": "ok",
-        "database": db_status,
-        "timestamp": datetime.utcnow().isoformat() + "Z"
-    }), 200
+    """Simple health check with minimal overhead."""
+    return jsonify({"status": "ok"}), 200
 
 @app.route("/chat", methods=['POST'])
 @limiter.limit("30 per minute") # Apply a specific, stricter limit to this expensive endpoint

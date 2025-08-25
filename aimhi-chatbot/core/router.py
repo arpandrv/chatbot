@@ -12,25 +12,22 @@ from core.session import get_session
 # --- Graceful Imports with Fallbacks ---
 # This makes the router resilient even if some modules are missing or broken.
 
-# Database (prefer v2)
-try:
-    from database.repository_v2 import save_message, save_analytics_event, update_session_state
-    DB_AVAILABLE = True
-except ImportError:
-    logger = logging.getLogger(__name__)
-    logger.warning("Database repository_v2 not found. Chat history will not be saved.")
-    DB_AVAILABLE = False
-    # Create dummy functions so the app doesn't crash
-    def save_message(session_id, role, message): pass
-    def save_analytics_event(event_type, event_data): pass
-    def update_session_state(session_id, state): pass
+# Database (required for proper operation)
+from database.repository_v2 import save_message, save_analytics_event, update_session_state
 
-# LLM (optional)
-try:
-    from llm.handoff_manager import LLMHandoffManager
-    LLM_AVAILABLE = os.getenv('LLM_ENABLED', 'false').lower() == 'true'
-except ImportError:
-    LLM_AVAILABLE = False
+# LLM (optional - controlled by environment variable)
+LLM_ENABLED = os.getenv('LLM_ENABLED', 'false').lower() == 'true'
+
+if LLM_ENABLED:
+    try:
+        from llm.handoff_manager import LLMHandoffManager
+        llm_handoff = LLMHandoffManager()
+    except ImportError as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"LLM enabled but import failed: {e}")
+        raise  # Fail fast instead of limping along
+else:
+    llm_handoff = None
 
 # NLP Components
 from nlp.risk_detector import contains_risk, get_crisis_resources
@@ -43,8 +40,7 @@ from nlp.sentiment import analyze_sentiment
 logger = logging.getLogger(__name__)
 response_selector = VariedResponseSelector()
 
-# Initialize LLM manager only if available and enabled
-llm_handoff = LLMHandoffManager() if LLM_AVAILABLE else None
+# LLM manager initialized above based on LLM_ENABLED
 
 
 # --- Main Router Function ---
@@ -199,13 +195,13 @@ def _handle_welcome_state(session_id, fsm, message, intent_result, sentiment_res
 
 def _handle_support_people_state(session_id, fsm, message, intent_result, sentiment_result, debug_info):
     """Handle the support_people state with progressive fallback"""
-    intent, confidence, user_sentiment = intent_result['label'], intent_result.get('confidence', 0.0), sentiment_result['label']
+    intent, user_sentiment = intent_result['label'], sentiment_result['label']
 
-    # Check if response matches expected intent
-    if intent == 'support_people' and confidence >= 0.2:
-        # Good response - save and advance
+    # Check if intent is clear (not unclear)
+    if intent != 'unclear':
+        # Clear response - save and advance
         fsm.save_response(message)
-        fsm.reset_attempts()  # Reset attempt counter since we got a good response
+        fsm.reset_attempts()
         
         if fsm.can_advance():
             fsm.next_step()
@@ -244,9 +240,9 @@ def _handle_support_people_state(session_id, fsm, message, intent_result, sentim
 
 def _handle_strengths_state(session_id, fsm, message, intent_result, sentiment_result, debug_info):
     """Handle the strengths state with progressive fallback"""
-    intent, confidence, user_sentiment = intent_result['label'], intent_result.get('confidence', 0.0), sentiment_result['label']
+    intent, user_sentiment = intent_result['label'], sentiment_result['label']
     
-    if intent == 'strengths' and confidence >= 0.3:
+    if intent != 'unclear':
         # Good response - save and advance
         fsm.save_response(message)
         fsm.reset_attempts()
@@ -288,9 +284,9 @@ def _handle_strengths_state(session_id, fsm, message, intent_result, sentiment_r
 
 def _handle_worries_state(session_id, fsm, message, intent_result, sentiment_result, debug_info):
     """Handle the worries state with progressive fallback"""
-    intent, confidence, user_sentiment = intent_result['label'], intent_result.get('confidence', 0.0), sentiment_result['label']
+    intent, user_sentiment = intent_result['label'], sentiment_result['label']
     
-    if intent == 'worries' and confidence >= 0.3:
+    if intent != 'unclear':
         # Good response - save and advance
         fsm.save_response(message)
         fsm.reset_attempts()
@@ -332,9 +328,9 @@ def _handle_worries_state(session_id, fsm, message, intent_result, sentiment_res
 
 def _handle_goals_state(session_id, fsm, message, intent_result, sentiment_result, debug_info):
     """Handle the goals state - last step before summary"""
-    intent, confidence, user_sentiment = intent_result['label'], intent_result.get('confidence', 0.0), sentiment_result['label']
+    intent, user_sentiment = intent_result['label'], sentiment_result['label']
     
-    if intent == 'goals' and confidence >= 0.3:
+    if intent != 'unclear':
         # Good response - save and advance to summary
         fsm.save_response(message)
         fsm.reset_attempts()

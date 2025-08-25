@@ -13,19 +13,59 @@ from typing import Optional, Dict, Any, List, Tuple
 
 logger = logging.getLogger(__name__)
 
+# Compile patterns at module level - once per process
+_PII_PATTERNS = [
+    re.compile(r'\b(?:\+61\s?|0)[2-9]\d{8}\b', re.IGNORECASE),  # Australian phone
+    re.compile(r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b', re.IGNORECASE),  # US phone
+    re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', re.IGNORECASE),  # Email
+    re.compile(r'\bABN\s*:?\s*\d{11}\b', re.IGNORECASE),  # Australian Business Number
+    re.compile(r'\bTFN\s*:?\s*\d{8,9}\b', re.IGNORECASE),  # Tax File Number
+    re.compile(r'\bBSB\s*:?\s*\d{3}[-\s]?\d{3}\b', re.IGNORECASE),  # Bank BSB
+    re.compile(r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b', re.IGNORECASE),  # Credit card
+    re.compile(r'\b\d{8,}\b', re.IGNORECASE)  # Long numbers (potential IDs)
+]
+
+_MEDICAL_PATTERNS = [
+    re.compile(r'\byou should take\s+(?:medication|pills|drugs)', re.IGNORECASE),
+    re.compile(r'\bi (?:recommend|suggest|prescribe)\s+(?:medication|pills|drugs)', re.IGNORECASE),
+    re.compile(r'\byou (?:have|are diagnosed with)\s+(?:depression|anxiety|adhd|bipolar)', re.IGNORECASE),
+    re.compile(r'\btake these (?:pills|medications|drugs)', re.IGNORECASE),
+    re.compile(r'\bi diagnose you with\b', re.IGNORECASE),
+    re.compile(r'\byour (?:disorder|condition|illness) is\b', re.IGNORECASE)
+]
+
+_CULTURAL_PATTERNS = [
+    re.compile(r'\b(?:typical|all|most)\s+aboriginal\s+(?:people|kids|youth|problems)', re.IGNORECASE),
+    re.compile(r'\baboriginal\s+(?:problems|issues|mentality)\b', re.IGNORECASE),
+    re.compile(r'\b(?:primitive|savage|backward|uncivilized)\b', re.IGNORECASE),
+    re.compile(r'\btribal\s+mentality\b', re.IGNORECASE),
+    re.compile(r'\b(?:real|proper|full-blood)\s+aboriginal\b', re.IGNORECASE)
+]
+
+_QUALITY_PATTERNS = [
+    re.compile(r'^(?:I cannot|I can\'t|I\'m not able to|I don\'t have access)', re.IGNORECASE),
+    re.compile(r'\b(?:API error|Error:|Failed to|unauthorized|rate limit)\b', re.IGNORECASE),
+    re.compile(r'\b(?:null|undefined|NaN|\.\.\.+)\b', re.IGNORECASE),
+    re.compile(r'^(?:umm|uh|er|well,?\s*$)', re.IGNORECASE)
+]
+
 
 class LLMGuardrails:
     """
     A robust, configuration-driven guardrail system for LLM interactions.
-    Combines external configuration with comprehensive built-in patterns.
+    Uses pre-compiled patterns for optimal performance.
     """
     
     def __init__(self):
         """Initialize guardrails by loading settings from config."""
-        self.compiled_patterns = {}
         self._load_config()
-        self._compile_patterns()
-        logger.info("LLMGuardrails initialized with comprehensive filtering.")
+        # Use the pre-compiled patterns
+        self.pii_patterns = _PII_PATTERNS
+        self.medical_patterns = _MEDICAL_PATTERNS
+        self.cultural_patterns = _CULTURAL_PATTERNS
+        self.quality_patterns = _QUALITY_PATTERNS
+        self._compile_additional_patterns()
+        logger.info("LLMGuardrails initialized with pre-compiled patterns.")
 
     def _load_config(self):
         """Load guardrail settings from llm_config.json with smart defaults."""
@@ -82,61 +122,22 @@ class LLMGuardrails:
                 "diagnoses, prescribe medications, or give clinical advice. Focus on listening "
                 "and encouraging professional help when appropriate.")
 
-    def _compile_patterns(self):
-        """Compile all regex patterns for efficient matching."""
-        # Built-in comprehensive PII patterns (always included)
-        builtin_pii = [
-            r'\b(?:\+61\s?|0)[2-9]\d{8}\b',  # Australian phone
-            r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b',  # US phone
-            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',  # Email
-            r'\bABN\s*:?\s*\d{11}\b',  # Australian Business Number
-            r'\bTFN\s*:?\s*\d{8,9}\b',  # Tax File Number
-            r'\bBSB\s*:?\s*\d{3}[-\s]?\d{3}\b',  # Bank BSB
-            r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b',  # Credit card
-            r'\b\d{8,}\b'  # Long numbers (potential IDs)
-        ]
-        
-        # Combine built-in + custom PII patterns
-        all_pii_patterns = builtin_pii + self.custom_pii_patterns
-        self.compiled_patterns['pii'] = [re.compile(pattern, re.IGNORECASE) for pattern in all_pii_patterns]
-        
-        # Medical advice patterns - always use comprehensive built-ins
-        direct_medical = [
-            r'\byou should take\s+(?:medication|pills|drugs)',
-            r'\bi (?:recommend|suggest|prescribe)\s+(?:medication|pills|drugs)',
-            r'\byou (?:have|are diagnosed with)\s+(?:depression|anxiety|adhd|bipolar)',
-            r'\btake these (?:pills|medications|drugs)',
-            r'\bi diagnose you with\b',
-            r'\byour (?:disorder|condition|illness) is\b'
-        ]
-        self.compiled_patterns['direct_medical'] = [re.compile(pattern, re.IGNORECASE) for pattern in direct_medical]
-        
-        # Supportive medical context indicators
+    def _compile_additional_patterns(self):
+        """Compile any custom patterns from config."""
+        # Supportive medical context indicators (non-regex)
         self.supportive_medical_indicators = [
             'might help to', 'could consider', 'talking to', 'reaching out to',
             'if you feel comfortable', 'when you\'re ready', 'support is available'
         ]
         
-        # Cultural sensitivity patterns
-        builtin_cultural = [
-            r'\b(?:typical|all|most)\s+aboriginal\s+(?:people|kids|youth|problems)',
-            r'\baboriginal\s+(?:problems|issues|mentality)\b',
-            r'\b(?:primitive|savage|backward|uncivilized)\b',
-            r'\btribal\s+mentality\b',
-            r'\b(?:real|proper|full-blood)\s+aboriginal\b'
-        ]
+        # Add any custom patterns from config if needed
+        custom_pii = getattr(self, 'custom_pii_patterns', [])
+        if custom_pii:
+            self.pii_patterns.extend([re.compile(pattern, re.IGNORECASE) for pattern in custom_pii])
         
-        all_cultural_patterns = builtin_cultural + [term for term in self.custom_cultural_terms]
-        self.compiled_patterns['cultural'] = [re.compile(pattern, re.IGNORECASE) for pattern in all_cultural_patterns]
-        
-        # Quality control patterns
-        quality_patterns = [
-            r'^(?:I cannot|I can\'t|I\'m not able to|I don\'t have access)',
-            r'\b(?:API error|Error:|Failed to|unauthorized|rate limit)\b',
-            r'\b(?:null|undefined|NaN|\.\.\.+)\b',
-            r'^(?:umm|uh|er|well,?\s*$)'
-        ]
-        self.compiled_patterns['quality'] = [re.compile(pattern, re.IGNORECASE) for pattern in quality_patterns]
+        custom_cultural = getattr(self, 'custom_cultural_terms', [])
+        if custom_cultural:
+            self.cultural_patterns.extend([re.compile(term, re.IGNORECASE) for term in custom_cultural])
 
     def pre_process(self, prompt: str) -> str:
         """
@@ -185,7 +186,7 @@ class LLMGuardrails:
 
     def _contains_pii(self, text: str) -> bool:
         """Check for PII using compiled patterns."""
-        for pattern in self.compiled_patterns.get('pii', []):
+        for pattern in self.pii_patterns:
             if pattern.search(text):
                 return True
         return False
@@ -193,7 +194,7 @@ class LLMGuardrails:
     def _contains_inappropriate_medical_advice(self, text: str) -> bool:
         """Check for inappropriate medical advice with context awareness."""
         # Always block direct medical advice
-        for pattern in self.compiled_patterns.get('direct_medical', []):
+        for pattern in self.medical_patterns:
             if pattern.search(text):
                 return True
         
@@ -217,7 +218,7 @@ class LLMGuardrails:
     def _contains_inappropriate_cultural_content(self, text: str) -> bool:
         """Check for culturally inappropriate content."""
         # Check compiled patterns
-        for pattern in self.compiled_patterns.get('cultural', []):
+        for pattern in self.cultural_patterns:
             if pattern.search(text):
                 return True
         
@@ -236,7 +237,7 @@ class LLMGuardrails:
             return True
         
         # Check quality patterns
-        for pattern in self.compiled_patterns.get('quality', []):
+        for pattern in self.quality_patterns:
             if pattern.search(text):
                 return True
         
@@ -311,10 +312,10 @@ class LLMGuardrails:
                 'quality_filter': self.enable_quality_filter
             },
             'pattern_counts': {
-                'pii_patterns': len(self.compiled_patterns.get('pii', [])),
-                'medical_patterns': len(self.compiled_patterns.get('direct_medical', [])),
-                'cultural_patterns': len(self.compiled_patterns.get('cultural', [])),
-                'quality_patterns': len(self.compiled_patterns.get('quality', []))
+                'pii_patterns': len(self.pii_patterns),
+                'medical_patterns': len(self.medical_patterns),
+                'cultural_patterns': len(self.cultural_patterns),
+                'quality_patterns': len(self.quality_patterns)
             },
             'custom_pattern_counts': {
                 'custom_pii': len(self.custom_pii_patterns),
