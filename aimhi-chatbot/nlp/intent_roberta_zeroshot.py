@@ -26,7 +26,10 @@ import warnings
 from typing import Tuple, Optional, Dict, Any, List
 from pathlib import Path
 
-warnings.filterwarnings('ignore')
+# Suppress only specific known warnings
+warnings.filterwarnings('ignore', category=FutureWarning, module='transformers')
+warnings.filterwarnings('ignore', message='.*resume_download.*', module='transformers')
+warnings.filterwarnings('ignore', category=UserWarning, message='.*TypedStorage.*')
 
 import numpy as np
 

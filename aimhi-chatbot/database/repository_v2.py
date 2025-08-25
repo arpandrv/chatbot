@@ -29,29 +29,39 @@ DATABASE_PATH = get_database_path()
 
 @contextmanager
 def get_db_connection():
-    """Context manager for database connections with per-connection PRAGMA settings."""
-    conn = None
+    """Context manager for database connections using connection pool."""
     try:
-        conn = sqlite3.connect(str(DATABASE_PATH))
-        conn.row_factory = sqlite3.Row
+        # Import the connection pool from app.py
+        from app import get_db
         
-        # CRITICAL: Apply PRAGMA settings to EVERY connection
-        conn.execute("PRAGMA foreign_keys = ON")        # Enable FK constraints
-        conn.execute("PRAGMA journal_mode = WAL")       # High performance mode
-        conn.execute("PRAGMA synchronous = NORMAL")     # Balance safety/speed
-        
-        yield conn
-        conn.commit()
-    except sqlite3.Error:
-        if conn:
-            conn.rollback()
-        raise
-    finally:
-        if conn:
-            conn.close()
+        # Use the pooled connection
+        with get_db() as conn:
+            yield conn
+            
+    except ImportError:
+        # Fallback to direct connection if app.py not available (e.g., in tests)
+        conn = None
+        try:
+            conn = sqlite3.connect(str(DATABASE_PATH))
+            conn.row_factory = sqlite3.Row
+            
+            # Apply PRAGMA settings to fallback connection
+            conn.execute("PRAGMA foreign_keys = ON")
+            conn.execute("PRAGMA journal_mode = WAL") 
+            conn.execute("PRAGMA synchronous = NORMAL")
+            
+            yield conn
+            conn.commit()
+        except sqlite3.Error:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if conn:
+                conn.close()
 
 def init_db():
-    """Initialize database with v2 schema."""
+    """Initialize database with v2 schema and performance indexes."""
     # Ensure directory exists
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     
@@ -61,17 +71,40 @@ def init_db():
     with get_db_connection() as conn:
         # Load and execute schema (PRAGMA settings are now in get_db_connection)
         conn.executescript(schema_path.read_text())
+        
+        # Apply performance indexes
+        indexes_path = Path(__file__).parent / 'indexes_v2.sql'
+        if indexes_path.exists():
+            conn.executescript(indexes_path.read_text())
+            logger.info("Performance indexes applied")
+        else:
+            logger.warning("Performance indexes file not found - database performance may be suboptimal")
     
     logger.info(f"Database initialized with {schema_file} at: {DATABASE_PATH}")
 
 # ============== Utility Functions ==============
 
 def insert_record(conn: sqlite3.Connection, table: str, data: Dict[str, Any]):
-    """Utility for clean inserts."""
-    columns = ', '.join(data.keys())
+    """Utility for clean inserts with SQL injection protection."""
+    # Validate table name against whitelist
+    ALLOWED_TABLES = {
+        'sessions', 'chat_history', 'user_responses', 'risk_detections', 
+        'analytics', 'session_summaries', 'intent_classifications', 'system_logs'
+    }
+    
+    if table not in ALLOWED_TABLES:
+        raise ValueError(f"Invalid table name: {table}")
+    
+    # Validate column names against known schema
+    if not all(isinstance(key, str) and key.replace('_', '').isalnum() for key in data.keys()):
+        raise ValueError("Invalid column names detected")
+    
+    columns = ', '.join(f'"{key}"' for key in data.keys())  # Quote column names
     placeholders = ', '.join('?' * len(data))
-    conn.execute(f'INSERT INTO {table} ({columns}) VALUES ({placeholders})', 
-                 tuple(data.values()))
+    
+    # Use parameterized query with quoted identifiers
+    query = f'INSERT INTO "{table}" ({columns}) VALUES ({placeholders})'
+    conn.execute(query, tuple(data.values()))
 
 # ============== Session Management ==============
 

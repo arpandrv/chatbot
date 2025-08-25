@@ -31,7 +31,7 @@ else:
 
 # NLP Components
 from nlp.risk_detector import contains_risk, get_crisis_resources
-from nlp.intent_distilbert import classify_intent
+from nlp.intent_roberta_zeroshot import classify_intent
 from nlp.preprocessor import normalize_text
 from nlp.response_selector import VariedResponseSelector
 from nlp.sentiment import analyze_sentiment

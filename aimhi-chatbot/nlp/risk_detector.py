@@ -3,15 +3,50 @@ from spacy.matcher import PhraseMatcher
 from rapidfuzz import fuzz
 import json
 import os
+import logging
 
-# Load smaller model for better performance
+logger = logging.getLogger(__name__)
+
+def load_spacy_model():
+    """Safely load spaCy model with proper error handling."""
+    try:
+        return spacy.load('en_core_web_sm')
+    except OSError as e:
+        logger.error(
+            f"spaCy model 'en_core_web_sm' not found. "
+            f"Please install it manually: python -m spacy download en_core_web_sm"
+        )
+        
+        # Check if we're in a development environment
+        if os.getenv('FLASK_ENV') == 'development':
+            logger.info("Development environment detected, attempting auto-download...")
+            try:
+                import subprocess
+                result = subprocess.run(
+                    ["python", "-m", "spacy", "download", "en_core_web_sm"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,  # 5 minute timeout
+                    check=True
+                )
+                logger.info("Model downloaded successfully")
+                return spacy.load('en_core_web_sm')
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as download_error:
+                logger.error(f"Failed to download model: {download_error}")
+                raise RuntimeError("spaCy model unavailable and download failed") from e
+        else:
+            raise RuntimeError(
+                "spaCy model not available in production environment. "
+                "Please ensure 'en_core_web_sm' is installed in the container image."
+            ) from e
+
+# Use the safe loader
 try:
-    nlp = spacy.load('en_core_web_sm')
-except:
-    # Fallback if model not installed
-    import subprocess
-    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
-    nlp = spacy.load('en_core_web_sm')
+    nlp = load_spacy_model()
+except RuntimeError:
+    # Fallback: create a minimal NLP pipeline or disable risk detection
+    logger.critical("Risk detection disabled due to missing spaCy model")
+    nlp = None
 
 # Load risk phrases configuration
 script_dir = os.path.dirname(__file__)
@@ -26,12 +61,15 @@ for item in risk_data['risk_phrases']:
     risk_phrases.append(item['phrase'].lower())
     risk_phrases.extend([v.lower() for v in item['variants']])
 
-# Create spaCy patterns for exact matching
-risk_phrase_patterns = [nlp.make_doc(text) for text in risk_phrases]
-
-# Initialize PhraseMatcher for exact matching
-matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
-matcher.add('RiskPhrases', risk_phrase_patterns)
+# Create spaCy patterns for exact matching (only if nlp is available)
+if nlp:
+    risk_phrase_patterns = [nlp.make_doc(text) for text in risk_phrases]
+    # Initialize PhraseMatcher for exact matching
+    matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
+    matcher.add('RiskPhrases', risk_phrase_patterns)
+else:
+    risk_phrase_patterns = []
+    matcher = None
 
 # Load additional detection data from JSON
 fuzzy_phrases = risk_data['fuzzy_phrases']
@@ -49,6 +87,16 @@ def contains_risk(text):
     3. Critical word detection with context validation
     """
     if not text:
+        return False
+    
+    # If nlp is not available, fall back to basic string matching
+    if not nlp:
+        logger.warning("Risk detection running in fallback mode without spaCy")
+        text_lower = text.lower()
+        # Basic string matching for critical phrases
+        for phrase in risk_phrases:
+            if phrase in text_lower:
+                return True
         return False
     
     text_lower = text.lower()
@@ -75,6 +123,8 @@ def contains_risk(text):
 
 def _check_exact_phrases(doc):
     """Check for exact risk phrase matches with context validation"""
+    if not matcher:
+        return False
     matches = matcher(doc)
     for match_id, start, end in matches:
         matched_phrase = doc[start:end].text.lower()

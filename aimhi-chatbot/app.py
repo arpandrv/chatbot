@@ -17,6 +17,13 @@ try:
 except ImportError:
     FLASK_LIMITER_AVAILABLE = False
 
+try:
+    from flask_wtf.csrf import CSRFProtect, generate_csrf, validate_csrf
+    FLASK_WTF_AVAILABLE = True
+except ImportError:
+    FLASK_WTF_AVAILABLE = False
+    logger.warning("Flask-WTF is not installed. Application is running without CSRF protection.")
+
 # Load environment variables securely
 try:
     from dotenv import load_dotenv
@@ -60,8 +67,57 @@ if FLASK_ENV == 'production' and (not SECRET_KEY or SECRET_KEY == 'dev-key-chang
     raise ValueError("SECRET_KEY must be set to a secure, random value in production.")
 app.secret_key = SECRET_KEY or 'dev-key-for-development-only'
 
-# Enable CORS for frontend interactions
-CORS(app, resources={r"/api/*": {"origins": "*"}}) # Or specify your frontend URL for better security
+# Configure CORS with secure settings
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Development frontend
+    "http://127.0.0.1:3000",
+    "http://localhost:5000",  # Flask development server
+    "http://127.0.0.1:5000",
+    # Add production domain when available
+    # "https://yourdomain.com",
+]
+
+# Add additional origins for development mode
+if FLASK_ENV == 'development':
+    ALLOWED_ORIGINS.extend([
+        "http://localhost:8080",
+        "http://127.0.0.1:8080"
+    ])
+
+# Secure CORS setup
+CORS(app, 
+     resources={
+         r"/api/*": {
+             "origins": ALLOWED_ORIGINS,
+             "methods": ["GET", "POST"],
+             "allow_headers": ["Content-Type", "Authorization"],
+             "supports_credentials": True,
+             "max_age": 86400  # Cache preflight for 24 hours
+         },
+         r"/chat": {
+             "origins": ALLOWED_ORIGINS,
+             "methods": ["POST"],
+             "allow_headers": ["Content-Type"],
+             "supports_credentials": True
+         }
+     },
+     vary_header=True
+)
+
+# CSRF Protection: Critical for preventing cross-site request forgery
+CSRF_ENABLED = os.getenv('CSRF_ENABLED', 'true').lower() == 'true'
+if FLASK_WTF_AVAILABLE and CSRF_ENABLED:
+    csrf = CSRFProtect(app)
+    
+    # Configure CSRF
+    app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour
+    app.config['WTF_CSRF_SSL_STRICT'] = FLASK_ENV == 'production'
+    
+    logger.info("CSRF protection enabled")
+else:
+    csrf = None
+    if CSRF_ENABLED:
+        logger.warning("CSRF protection requested but Flask-WTF not available")
 
 # Rate Limiting: A crucial security feature against abuse
 if FLASK_LIMITER_AVAILABLE:
@@ -82,19 +138,65 @@ else:
     limiter = DummyLimiter()
 
 
-# --- Database Connection Management (Per-Request) ---
-# This is the most efficient and correct way to handle DB connections in Flask.
+# --- Database Connection Management (Connection Pool) ---
+import threading
+from contextlib import contextmanager
+
+# Simple connection pool globals
+_db_pool = []
+_pool_lock = threading.Lock()
+MAX_CONNECTIONS = 10
+
+def _create_db_connection():
+    """Create a properly configured database connection."""
+    conn = sqlite3.connect(
+        str(DATABASE_PATH),
+        timeout=30,
+        check_same_thread=False
+    )
+    conn.row_factory = sqlite3.Row
+    # Configure for better performance
+    conn.execute("PRAGMA busy_timeout = 30000")
+    conn.execute("PRAGMA foreign_keys = ON") 
+    conn.execute("PRAGMA journal_mode = WAL")
+    return conn
+
+@contextmanager 
 def get_db():
-    if 'db' not in g:
-        g.db = sqlite3.connect(str(DATABASE_PATH))
-        g.db.row_factory = sqlite3.Row
-    return g.db
+    """Get database connection from simple pool."""
+    conn = None
+    try:
+        # Try to get from pool
+        with _pool_lock:
+            if _db_pool:
+                conn = _db_pool.pop()
+            else:
+                conn = _create_db_connection()
+        
+        yield conn
+        conn.commit()
+        
+    except Exception:
+        if conn:
+            conn.rollback()
+        raise
+    finally:
+        # Return to pool if healthy
+        if conn:
+            try:
+                conn.execute("SELECT 1")  # Health check
+                with _pool_lock:
+                    if len(_db_pool) < MAX_CONNECTIONS:
+                        _db_pool.append(conn)
+                    else:
+                        conn.close()
+            except:
+                conn.close()
 
 @app.teardown_appcontext
 def close_db(e=None):
-    db = g.pop('db', None)
-    if db is not None:
-        db.close()
+    # Connection pool handles cleanup automatically
+    pass
 
 
 # --- API Routes ---
@@ -109,11 +211,25 @@ def health_check():
     """Simple health check with minimal overhead."""
     return jsonify({"status": "ok"}), 200
 
+# Exempt health check from CSRF if protection is enabled
+if csrf:
+    csrf.exempt(health_check)
+
+@app.route("/api/csrf-token", methods=['GET'])
+def get_csrf_token():
+    """Endpoint to get CSRF token for API clients."""
+    if FLASK_WTF_AVAILABLE and CSRF_ENABLED:
+        token = generate_csrf()
+        return jsonify({"csrf_token": token}), 200
+    else:
+        return jsonify({"csrf_token": None, "csrf_required": False}), 200
+
 @app.route("/chat", methods=['POST'])
 @limiter.limit("30 per minute") # Apply a specific, stricter limit to this expensive endpoint
 def chat():
     """
     Main endpoint for processing user messages.
+    - Validates CSRF token (if enabled)
     - Validates input
     - Delegates to the core application logic
     - Formats the response
@@ -122,6 +238,17 @@ def chat():
         return jsonify({"error": "Content-Type must be application/json"}), 415
 
     data = request.get_json(silent=True) or {}
+    
+    # Manual CSRF validation for JSON requests (if enabled)
+    if FLASK_WTF_AVAILABLE and CSRF_ENABLED and FLASK_ENV == 'production':
+        csrf_token = data.get('csrf_token') or request.headers.get('X-CSRF-Token')
+        if not csrf_token:
+            return jsonify({"error": "CSRF token missing"}), 400
+        try:
+            validate_csrf(csrf_token)
+        except Exception as e:
+            logger.warning(f"CSRF validation failed: {e}")
+            return jsonify({"error": "Invalid CSRF token"}), 400
 
     message = data.get("message", "").strip()
     if not message or len(message) > 1000:
@@ -148,6 +275,10 @@ def chat():
             "session_id": session_id,
             "state": fsm_state,
         }
+        
+        # Include CSRF token in response for next request
+        if FLASK_WTF_AVAILABLE and CSRF_ENABLED:
+            response_payload['csrf_token'] = generate_csrf()
         
         # Only include debug info if not in production for security
         if FLASK_ENV != 'production':
