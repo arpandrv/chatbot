@@ -15,9 +15,8 @@ CREATE INDEX IF NOT EXISTS idx_chat_history_session_ts ON chat_history(session_i
 CREATE INDEX IF NOT EXISTS idx_user_responses_session_id ON user_responses(session_id);
 CREATE INDEX IF NOT EXISTS idx_user_responses_step ON user_responses(step);
 
--- Analytics queries
+-- Analytics queries (Note: analytics.timestamp already has index in schema)
 CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON analytics(event_type);
-CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics(timestamp DESC);
 
 -- Risk detection queries
 CREATE INDEX IF NOT EXISTS idx_risk_detections_session_id ON risk_detections(session_id);
@@ -28,7 +27,6 @@ CREATE INDEX IF NOT EXISTS idx_intent_classifications_session_id ON intent_class
 CREATE INDEX IF NOT EXISTS idx_intent_classifications_method ON intent_classifications(method);
 CREATE INDEX IF NOT EXISTS idx_intent_classifications_confidence ON intent_classifications(confidence);
 
--- System logs for debugging
+-- System logs for debugging (Note: system_logs uses created_at not timestamp)
 CREATE INDEX IF NOT EXISTS idx_system_logs_component ON system_logs(component);
 CREATE INDEX IF NOT EXISTS idx_system_logs_log_level ON system_logs(log_level);
-CREATE INDEX IF NOT EXISTS idx_system_logs_timestamp ON system_logs(timestamp DESC);

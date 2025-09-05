@@ -1,341 +1,371 @@
-# --- Imports ---
-# Standard library imports first
+# --- Standard Library Imports ---
 import os
 import uuid
 import logging
 import sqlite3
-from datetime import datetime
+import atexit
 
-# Flask and extensions
-from flask import Flask, jsonify, request, g, render_template
+# --- Flask and Extensions (Required) ---
+from flask import Flask, jsonify, request, render_template, abort, make_response
 from flask_cors import CORS
-# Use a try-except for optional dependencies to prevent app from crashing if not installed
-try:
-    from flask_limiter import Limiter
-    from flask_limiter.util import get_remote_address
-    FLASK_LIMITER_AVAILABLE = True
-except ImportError:
-    FLASK_LIMITER_AVAILABLE = False
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect, generate_csrf, validate_csrf
 
-try:
-    from flask_wtf.csrf import CSRFProtect, generate_csrf, validate_csrf
-    FLASK_WTF_AVAILABLE = True
-except ImportError:
-    FLASK_WTF_AVAILABLE = False
-    logger.warning("Flask-WTF is not installed. Application is running without CSRF protection.")
+# --- Database Connection Management (Connection Pool) ---
+from contextlib import contextmanager
+from queue import LifoQueue, Empty
 
-# Load environment variables securely
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass # Fails gracefully if python-dotenv is not installed
+# --- Load Environment Variables ---
+from dotenv import load_dotenv
 
 # Local application imports
 from core.router import route_message
-from core.session import new_session_id, get_session
+from core.session import get_session
 from database.repository_v2 import init_db, DATABASE_PATH
 
-# --- Logging Configuration ---
-# Set up logging before creating the app instance
-# This ensures that logging is available from the start
-logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO").upper(),
-    format="%(asctime)s [%(levelname)s] [%(name)s] - %(message)s",
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
+load_dotenv()
 
-# --- Database Initialization ---
-# It's good practice to initialize the DB once on startup
-try:
-    init_db()
-    logger.info("Database initialized or already exists.")
-except Exception as e:
-    logger.error(f"FATAL: Database could not be initialized: {e}", exc_info=True)
-    # Depending on requirements, you might want to exit here if the DB is critical
-    # For this app, we'll let it run but it will likely fail on /chat requests.
+FLASK_ENV = os.getenv("FLASK_ENV", "production")
+IS_PROD   = (FLASK_ENV == "production")
+SECRET_KEY = os.getenv("SECRET_KEY")
+CSRF_ENABLED = os.getenv("CSRF_ENABLED", "true").lower() == "true"
+POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
+POOL_TIMEOUT = float(os.getenv("DB_POOL_TIMEOUT", "5"))  # seconds to wait for a free connection
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+origins_env = os.getenv("CORS_ORIGINS", "").strip()
+
+# --- Logging Configuration ---
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format="%(asctime)s [%(levelname)s] [%(name)s] - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("app")
+
 
 # --- Flask App Initialization & Configuration ---
 app = Flask(__name__)
 
-# Security: Enforce a secure secret key in production
-FLASK_ENV = os.getenv('FLASK_ENV', 'development')
-SECRET_KEY = os.getenv('SECRET_KEY')
-if FLASK_ENV == 'production' and (not SECRET_KEY or SECRET_KEY == 'dev-key-change-in-production'):
-    logger.error("FATAL: SECRET_KEY is not set or is insecure for production.")
-    raise ValueError("SECRET_KEY must be set to a secure, random value in production.")
-app.secret_key = SECRET_KEY or 'dev-key-for-development-only'
+# --- Secret Key Configuration ---
+if IS_PROD:
+    if not SECRET_KEY or SECRET_KEY == 'dev-key-change-in-production':
+        logger.critical("❌ FATAL: SECRET_KEY is not set or is insecure for production.")
+        raise SystemExit("SECRET_KEY must be set to a secure, random value in production.")
+    app.secret_key = SECRET_KEY
+else:
+    app.secret_key = SECRET_KEY or 'dev-key-for-development-only'
 
-# Configure CORS with secure settings
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # Development frontend
-    "http://127.0.0.1:3000",
-    "http://localhost:5000",  # Flask development server
-    "http://127.0.0.1:5000",
-    # Add production domain when available
-    # "https://yourdomain.com",
-]
 
-# Add additional origins for development mode
-if FLASK_ENV == 'development':
-    ALLOWED_ORIGINS.extend([
-        "http://localhost:8080",
-        "http://127.0.0.1:8080"
-    ])
 
-# Secure CORS setup
-CORS(app, 
-     resources={
-         r"/api/*": {
-             "origins": ALLOWED_ORIGINS,
-             "methods": ["GET", "POST"],
-             "allow_headers": ["Content-Type", "Authorization"],
-             "supports_credentials": True,
-             "max_age": 86400  # Cache preflight for 24 hours
-         },
-         r"/chat": {
-             "origins": ALLOWED_ORIGINS,
-             "methods": ["POST"],
-             "allow_headers": ["Content-Type"],
-             "supports_credentials": True
-         }
-     },
-     vary_header=True
+# --- CORS ---
+# In production, set: CORS_ORIGINS="https://yourdomain.com,https://admin.yourdomain.com"
+if IS_PROD:
+    ORIGINS = []
+    for o in origins_env.split(","):
+        o = o.strip()
+        if o:
+            ORIGINS.append(o)
+    if not ORIGINS:
+        raise SystemExit("CORS_ORIGINS must be set in production (comma-separated).")
+else:
+    ORIGINS = [r"http://localhost:\d+", r"http://127\.0\.0\.1:\d+"]
+
+
+cors_common = {
+    "origins": ORIGINS,
+    "supports_credentials": True,
+    "allow_headers": ["Content-Type", "Authorization", "X-CSRF-Token"],
+    "methods": ["GET", "POST"],
+    "max_age": 86400,
+}
+
+CORS(
+    app,
+    resources={
+        r"/api/.*": cors_common,
+        r"/chat": {**cors_common, "methods": ["POST"]},
+        r"/health": cors_common,
+        r"/": cors_common
+    },
+    vary_header=True,
 )
 
-# CSRF Protection: Critical for preventing cross-site request forgery
-CSRF_ENABLED = os.getenv('CSRF_ENABLED', 'true').lower() == 'true'
-if FLASK_WTF_AVAILABLE and CSRF_ENABLED:
-    csrf = CSRFProtect(app)
-    
-    # Configure CSRF
-    app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour
-    app.config['WTF_CSRF_SSL_STRICT'] = FLASK_ENV == 'production'
-    
-    logger.info("CSRF protection enabled")
-else:
-    csrf = None
-    if CSRF_ENABLED:
-        logger.warning("CSRF protection requested but Flask-WTF not available")
+# --- CSRF Protection ---
+app.config.update(
+    WTF_CSRF_TIME_LIMIT=3600,
+    WTF_CSRF_SSL_STRICT=IS_PROD,
+    WTF_CSRF_CHECK_DEFAULT=False, # we manually validate JSON endpoints
+
+     # session cookie hardening
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=IS_PROD,
+)
+csrf = CSRFProtect(app) if CSRF_ENABLED else None
+logger.info("CSRF protection %s", "enabled" if CSRF_ENABLED else "disabled by config")
 
 # Rate Limiting: A crucial security feature against abuse
-if FLASK_LIMITER_AVAILABLE:
-    limiter = Limiter(
-        app=app,
-        key_func=get_remote_address,
-        default_limits=["200 per day", "50 per hour"],
-        storage_uri="memory://" # For simple, single-process deployments. Use Redis for multi-process.
-    )
-else:
-    logger.warning("Flask-Limiter is not installed. Application is running without rate limiting.")
-    # Create a dummy decorator so the app doesn't crash
-    class DummyLimiter:
-        def limit(self, _):
-            def decorator(f):
-                return f
-            return decorator
-    limiter = DummyLimiter()
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://" # In-memory for simplicity, needs to use redis in production
+)
 
 
-# --- Database Connection Management (Connection Pool) ---
-import threading
-from contextlib import contextmanager
 
-# Simple connection pool globals
-_db_pool = []
-_pool_lock = threading.Lock()
-MAX_CONNECTIONS = 10
 
-def _create_db_connection():
-    """Create a properly configured database connection."""
+# --- DB Connection Pool (SQLite + LIFO queue) ---
+_pool: LifoQueue[sqlite3.Connection] = LifoQueue(maxsize=POOL_SIZE)
+
+def _create_db_connection() -> sqlite3.Connection:
+    """
+    Create a configured SQLite connection.
+
+    Note: isolation_level=None => autocommit is ON by default; we start
+    transactions explicitly with BEGIN and finish with COMMIT/ROLLBACK.
+    """
     conn = sqlite3.connect(
         str(DATABASE_PATH),
         timeout=30,
-        check_same_thread=False
+        check_same_thread=False,
+        isolation_level=None,  # explicit transaction control
     )
     conn.row_factory = sqlite3.Row
-    # Configure for better performance
+    # Pragmas (applied per-connection)
     conn.execute("PRAGMA busy_timeout = 30000")
-    conn.execute("PRAGMA foreign_keys = ON") 
+    conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA strict = ON")
     return conn
 
-@contextmanager 
-def get_db():
-    """Get database connection from simple pool."""
-    conn = None
+def _get_conn() -> sqlite3.Connection:
+    """Get a connection from pool or create a new one."""
     try:
-        # Try to get from pool
-        with _pool_lock:
-            if _db_pool:
-                conn = _db_pool.pop()
-            else:
-                conn = _create_db_connection()
-        
-        yield conn
-        conn.commit()
-        
+        return _pool.get(block=False)
+    except Empty:
+        return _create_db_connection()
+
+def _return_conn(conn: sqlite3.Connection) -> None:
+    """Return connection to pool; if full or broken, close."""
+    if conn is None:
+        return
+    try:
+        _pool.put(conn, block=False)
     except Exception:
-        if conn:
-            conn.rollback()
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+@contextmanager
+def get_db():
+    """
+    Usage:
+        with get_db() as conn:
+            cur = conn.execute("SELECT 1")
+            ...
+    Manages BEGIN/COMMIT/ROLLBACK and returns pooled connections.
+    """
+    conn = _get_conn()
+    try:
+        conn.execute("BEGIN")
+        yield conn
+        conn.execute("COMMIT")
+    except Exception as e:
+        try:
+            conn.execute("ROLLBACK")
+        except Exception:
+            logger.exception("Failed to ROLLBACK after error")
+        logger.exception("DB error: %s", e)
         raise
     finally:
-        # Return to pool if healthy
-        if conn:
-            try:
-                conn.execute("SELECT 1")  # Health check
-                with _pool_lock:
-                    if len(_db_pool) < MAX_CONNECTIONS:
-                        _db_pool.append(conn)
-                    else:
-                        conn.close()
-            except:
-                conn.close()
+        _return_conn(conn)
 
-@app.teardown_appcontext
-def close_db(e=None):
-    # Connection pool handles cleanup automatically
-    pass
+# Optional: pre-warm a couple of connections
+try:
+    for _ in range(min(POOL_SIZE, 2)):
+        _return_conn(_create_db_connection())
+except Exception:
+    logger.warning("Failed to pre-warm DB pool", exc_info=True)
+
+def _close_pool():
+    """Close any pooled connections at process exit."""
+    drained = 0
+    while True:
+        try:
+            conn = _pool.get(block=False)
+        except Empty:
+            break
+        try:
+            conn.close()
+            drained += 1
+        except Exception:
+            pass
+    logger.info("Database pool closed (drained %d conns)", drained)
+
+atexit.register(_close_pool)
+
+
+
+
+# --- Database Initialization (Required) ---
+try:
+    init_db()
+    logger.info("✅ Database initialized successfully.")
+except Exception as e:
+    logger.critical("❌ FATAL: Database initialization failed", exc_info=True)
+
+    if IS_PROD:
+        raise SystemExit("Startup aborted: Database could not be initialized.")
+    else:
+        raise  # Shows full traceback in dev for debugging
+
+
+
+# chunk4-start
 
 
 # --- API Routes ---
 @app.route('/')
 def index():
-    """Serves the main static HTML file for the chat interface."""
-    # This is a simple passthrough. All logic is handled by the frontend JS and /chat API.
+    """Serve the main HTML page."""
     return render_template('index.html')
 
 @app.route("/health")
 def health_check():
-    """Simple health check with minimal overhead."""
     return jsonify({"status": "ok"}), 200
 
-# Exempt health check from CSRF if protection is enabled
+# CSRF exemptions for views that do not need automatic form-based CSRF
 if csrf:
     csrf.exempt(health_check)
 
-@app.route("/api/csrf-token", methods=['GET'])
+@app.route("/api/csrf-token", methods=["GET"])
 def get_csrf_token():
-    """Endpoint to get CSRF token for API clients."""
-    if FLASK_WTF_AVAILABLE and CSRF_ENABLED:
-        token = generate_csrf()
-        return jsonify({"csrf_token": token}), 200
-    else:
-        return jsonify({"csrf_token": None, "csrf_required": False}), 200
+    if CSRF_ENABLED:
+        return jsonify({"csrf_token": generate_csrf(), "csrf_required": True}), 200
+    return jsonify({"csrf_token": None, "csrf_required": False}), 200
 
-@app.route("/chat", methods=['POST'])
-@limiter.limit("30 per minute") # Apply a specific, stricter limit to this expensive endpoint
-def chat():
-    """
-    Main endpoint for processing user messages.
-    - Validates CSRF token (if enabled)
-    - Validates input
-    - Delegates to the core application logic
-    - Formats the response
-    """
+
+def _require_json() -> dict:
+    """Ensure JSON request and return parsed body, or abort with 4xx."""
     if not request.is_json:
-        return jsonify({"error": "Content-Type must be application/json"}), 415
+        abort(make_response(jsonify(error="Content-Type must be application/json"), 415))
+    data = request.get_json(silent=True)
+    if data is None:
+        abort(make_response(jsonify(error="Malformed JSON body"), 400))
+    return data
 
-    data = request.get_json(silent=True) or {}
-    
-    # Manual CSRF validation for JSON requests (if enabled)
-    if FLASK_WTF_AVAILABLE and CSRF_ENABLED and FLASK_ENV == 'production':
-        csrf_token = data.get('csrf_token') or request.headers.get('X-CSRF-Token')
-        if not csrf_token:
-            return jsonify({"error": "CSRF token missing"}), 400
-        try:
-            validate_csrf(csrf_token)
-        except Exception as e:
-            logger.warning(f"CSRF validation failed: {e}")
-            return jsonify({"error": "Invalid CSRF token"}), 400
 
-    message = data.get("message", "").strip()
+def _validate_json_csrf_or_400(data: dict) -> None:
+    """Manual CSRF for JSON (prod only), aborts on failure."""
+    if not (CSRF_ENABLED and IS_PROD):
+        return
+    token = data.get("csrf_token") or request.headers.get("X-CSRF-Token")
+    if not token:
+        abort(make_response(jsonify(error="CSRF token missing"), 400))
+    try:
+        validate_csrf(token)
+    except Exception as e:
+        logger.warning("CSRF validation failed: %s", e)
+        abort(make_response(jsonify(error="Invalid CSRF token"), 400))
+
+
+@app.route("/chat", methods=["POST"])
+@limiter.limit("30 per minute")  # stricter rate for this endpoint
+def chat():
+    data = _require_json()
+    _validate_json_csrf_or_400(data)
+
+    message = (data.get("message") or "").strip()
     if not message or len(message) > 1000:
         return jsonify({"error": "Field 'message' must be a non-empty string under 1000 characters."}), 400
 
     session_id = data.get("session_id") or str(uuid.uuid4())
 
     try:
-        # The single point of delegation to the core logic.
         result = route_message(session_id, message)
+        reply, debug_info = (result if isinstance(result, tuple) and len(result) == 2 else (str(result), {}))
 
-        # Normalize the result from the router into a standard format.
-        if isinstance(result, tuple) and len(result) == 2:
-            reply, debug_info = result
-        else:
-            reply = str(result)
-            debug_info = {}
+        fsm_state = get_session(session_id)["fsm"].state
 
-        # Get current FSM state for the response payload
-        fsm_state = get_session(session_id)['fsm'].state
-
-        response_payload = {
+        payload = {
             "reply": reply,
             "session_id": session_id,
             "state": fsm_state,
         }
-        
-        # Include CSRF token in response for next request
-        if FLASK_WTF_AVAILABLE and CSRF_ENABLED:
-            response_payload['csrf_token'] = generate_csrf()
-        
-        # Only include debug info if not in production for security
-        if FLASK_ENV != 'production':
-            response_payload['debug'] = debug_info
+        if CSRF_ENABLED:
+            payload["csrf_token"] = generate_csrf()
+        if not IS_PROD:
+            payload["debug"] = debug_info
 
-        return jsonify(response_payload), 200
+        return jsonify(payload), 200
 
-    # Specific SQLite error handling
     except sqlite3.Error as e:
-        logger.error(f"Database error in /chat for session {session_id}: {e}")
+        logger.error("Database error in /chat for session %s: %s", session_id, e)
         return jsonify({"error": "Database temporarily unavailable. Please try again."}), 503
-    
+
     except Exception:
-        # Log the full error for developers but don't expose it to the user.
-        logger.exception(f"Unhandled error in /chat route for session {session_id}")
+        logger.exception("Unhandled error in /chat for session %s", session_id)
         return jsonify({"error": "An internal server error occurred."}), 500
 
+# keep your existing exemption since we do manual JSON CSRF:
+if csrf:
+    csrf.exempt(chat)
 
-# --- Application-Wide Error Handlers ---
+
+#chunk4-end
+
+
+
+
+#chunk5-start
+
+# --- Error Handlers ---
 @app.errorhandler(404)
-def not_found_error(error):
+def not_found_error(_):
     return jsonify({"error": "Not Found"}), 404
 
 @app.errorhandler(405)
-def method_not_allowed_error(error):
+def method_not_allowed_error(_):
     return jsonify({"error": "Method Not Allowed"}), 405
 
 @app.errorhandler(500)
-def internal_server_error(error):
-    logger.error(f"Caught unhandled 500 error: {error}", exc_info=True)
+def internal_server_error(e):
+    logger.error("Caught unhandled 500: %s", e, exc_info=True)
     return jsonify({"error": "Internal Server Error"}), 500
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
     return jsonify(error=f"Rate limit exceeded: {e.description}"), 429
 
-
-# --- Security Middleware ---
+# --- Security Headers ---
 @app.after_request
 def add_security_headers(response):
-    """Add security headers to all responses to mitigate common web vulnerabilities."""
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    # More secure CSP policy
-    csp = "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net;"
-    response.headers['Content-Security-Policy'] = csp
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    # X-XSS-Protection is legacy; keep for old browsers, harmless for modern
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    # CSP: adjust if you load scripts/styles from other CDNs
+    csp = (
+        "default-src 'self'; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "script-src 'self' https://cdn.jsdelivr.net; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none';"
+    )
+    response.headers["Content-Security-Policy"] = csp
     return response
 
 
-# --- Main Entry Point for Running the App ---
-if __name__ == '__main__':
-    # This block is ONLY for local development.
-    # Production deployments should use a WSGI server like Gunicorn.
+#chunk5-end
+
+
+# --- Main (dev only) ---
+if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    # `debug=True` is insecure and should only be used for local development
-    debug_mode = FLASK_ENV != 'production'
-    
-    logger.info(f"Starting Flask development server on http://0.0.0.0:{port} (Debug: {debug_mode})")
+    debug_mode = (not IS_PROD)
+    logger.info("Starting Flask server on http://0.0.0.0:%d (Debug: %s)", port, debug_mode)
     app.run(host="0.0.0.0", port=port, debug=debug_mode)

@@ -179,6 +179,9 @@ def _handle_welcome_state(session_id, fsm, message, intent_result, sentiment_res
     """Handle the welcome state - entry point of conversation"""
     intent, confidence, user_sentiment = intent_result['label'], intent_result.get('confidence', 0.0), sentiment_result['label']
     
+    # Log intent classification for debugging
+    debug_info['intent_classification'] = {'intent': intent, 'confidence': confidence}
+    
     if len(message.strip()) > 3:  # Any substantial response moves the conversation forward
         if fsm.can_advance():
             fsm.next_step()
@@ -389,6 +392,7 @@ def _handle_goals_state(session_id, fsm, message, intent_result, sentiment_resul
 def _handle_fallback_state(session_id, fsm, *args):
     """Handles any unexpected FSM state."""
     logger.error(f"Router entered unexpected FSM state: {fsm.state} for session {session_id}")
+    logger.debug(f"Fallback handler received args: {args}")
     return response_selector.get_response('fallback', 'general', session_id)
 
 
