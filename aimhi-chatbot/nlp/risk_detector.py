@@ -1,247 +1,103 @@
-import spacy
-from spacy.matcher import PhraseMatcher
-from rapidfuzz import fuzz
-import json
 import os
+import json
 import logging
+from typing import Optional, Dict
+import requests
 
 logger = logging.getLogger(__name__)
 
-def load_spacy_model():
-    """Safely load spaCy model with proper error handling."""
+# Configuration
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()  # "openai" or "ollama"
+API_KEY = os.getenv("LLM_API_KEY", "")
+MODEL = os.getenv("LLM_MODEL", "gpt-4")
+TIMEOUT = float(os.getenv("LLM_TIMEOUT", "2.0"))
+TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
+MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "100"))
+OPENAI_API_BASE = os.getenv("LLM_API_BASE", "https://api.openai.com/v1")
+OLLAMA_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+
+SYSTEM_PROMPT = os.getenv("LLM_SYSTEM_PROMPT")
+if not SYSTEM_PROMPT:
+    raise RuntimeError("System prompt not specified. Please set the LLM_SYSTEM_PROMPT environment variable.")
+
+def get_user_prompt(text: str) -> str:
+    return f'Message: "{text}"'
+
+
+def detect_risk_openai(text: str, timeout: Optional[float] = None) -> Dict:
     try:
-        return spacy.load('en_core_web_sm')
-    except OSError as e:
-        logger.error(
-            f"spaCy model 'en_core_web_sm' not found. "
-            f"Please install it manually: python -m spacy download en_core_web_sm"
+        headers = {
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": MODEL,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": get_user_prompt(text)}
+            ],
+            "temperature": TEMPERATURE,
+            "max_tokens": MAX_TOKENS
+        }
+        response = requests.post(
+            f"{OPENAI_API_BASE}/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=timeout or TIMEOUT
         )
-        
-        # Check if we're in a development environment
-        if os.getenv('FLASK_ENV') == 'development':
-            logger.info("Development environment detected, attempting auto-download...")
-            try:
-                import subprocess
-                result = subprocess.run(
-                    ["python", "-m", "spacy", "download", "en_core_web_sm"],
-                    capture_output=True,
-                    text=True,
-                    timeout=300,  # 5 minute timeout
-                    check=True
-                )
-                logger.info("Model downloaded successfully")
-                return spacy.load('en_core_web_sm')
-            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as download_error:
-                logger.error(f"Failed to download model: {download_error}")
-                raise RuntimeError("spaCy model unavailable and download failed") from e
+        response.raise_for_status()
+        result = response.json()
+        message = result["choices"][0]["message"]["content"].strip()
+        return parse_json_response(message)
+    except Exception as e:
+        logger.error(f"OpenAI error: {str(e)}")
+        return {"label": "no_risk", "error": str(e)}
+
+
+def detect_risk_ollama(text: str, timeout: Optional[float] = None) -> Dict:
+    try:
+        full_prompt = f"{SYSTEM_PROMPT}\n\n{get_user_prompt(text)}"
+        payload = {
+            "model": MODEL,
+            "prompt": full_prompt,
+            "temperature": TEMPERATURE,
+            "stream": False
+        }
+        response = requests.post(
+            f"{OLLAMA_API_BASE}/api/generate",
+            json=payload,
+            timeout=timeout or TIMEOUT
+        )
+        response.raise_for_status()
+        result = response.json()
+        message = result.get("response", "").strip()
+        return parse_json_response(message)
+    except Exception as e:
+        logger.error(f"Ollama error: {str(e)}")
+        return {"label": "no_risk", "error": str(e)}
+
+
+def parse_json_response(response_text: str) -> Dict:
+    try:
+        parsed = json.loads(response_text)
+        if isinstance(parsed, dict) and parsed.get("label") in {"risk", "no_risk"}:
+            return parsed
         else:
-            raise RuntimeError(
-                "spaCy model not available in production environment. "
-                "Please ensure 'en_core_web_sm' is installed in the container image."
-            ) from e
+            raise ValueError("Missing or invalid 'label' field")
+    except Exception as e:
+        logger.warning(f"Failed to parse response as JSON: {response_text} ({e})")
+        return {"label": "no_risk", "error": f"Invalid format: {str(e)}"}
 
-# Use the safe loader
-try:
-    nlp = load_spacy_model()
-except RuntimeError:
-    # Fallback: create a minimal NLP pipeline or disable risk detection
-    logger.critical("Risk detection disabled due to missing spaCy model")
-    nlp = None
 
-# Load risk phrases configuration
-script_dir = os.path.dirname(__file__)
-config_path = os.path.join(script_dir, '..', 'config', 'risk_phrases.json')
+def detect_risk_llm(text: str, timeout: Optional[float] = None) -> Dict:
+    if LLM_PROVIDER == "ollama":
+        return detect_risk_ollama(text, timeout)
+    return detect_risk_openai(text, timeout)
 
-with open(config_path) as f:
-    risk_data = json.load(f)
 
-# Build comprehensive risk phrase list
-risk_phrases = []
-for item in risk_data['risk_phrases']:
-    risk_phrases.append(item['phrase'].lower())
-    risk_phrases.extend([v.lower() for v in item['variants']])
+# def is_llm_available() -> bool:
+#     if LLM_PROVIDER == "ollama":
+#         return True
+#     return bool(API_KEY)
 
-# Create spaCy patterns for exact matching (only if nlp is available)
-if nlp:
-    risk_phrase_patterns = [nlp.make_doc(text) for text in risk_phrases]
-    # Initialize PhraseMatcher for exact matching
-    matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
-    matcher.add('RiskPhrases', risk_phrase_patterns)
-else:
-    risk_phrase_patterns = []
-    matcher = None
-
-# Load additional detection data from JSON
-fuzzy_phrases = risk_data['fuzzy_phrases']
-critical_tokens = set(risk_data['critical_tokens'])
-positive_indicators = risk_data['context_validation']['positive_indicators']
-concerning_context = risk_data['context_validation']['concerning_context']
-false_positive_phrases = risk_data['false_positives']['innocent_phrases']
-false_positive_patterns = risk_data['false_positives']['context_patterns']
-
-def contains_risk(text):
-    """
-    Check if text contains risk indicators using three methods:
-    1. Exact phrase matching 
-    2. Fuzzy matching for misspellings
-    3. Critical word detection with context validation
-    """
-    if not text:
-        return False
-    
-    # If nlp is not available, fall back to basic string matching
-    if not nlp:
-        logger.warning("Risk detection running in fallback mode without spaCy")
-        text_lower = text.lower()
-        # Basic string matching for critical phrases
-        for phrase in risk_phrases:
-            if phrase in text_lower:
-                return True
-        return False
-    
-    text_lower = text.lower()
-    
-    # Early exit: Check for innocent phrases first
-    if any(phrase in text_lower for phrase in false_positive_phrases):
-        return False
-    
-    doc = nlp(text_lower)
-    
-    # Method 1: Exact phrase matching
-    if _check_exact_phrases(doc):
-        return True
-    
-    # Method 2: Fuzzy matching for misspellings  
-    if _check_fuzzy_matches(text_lower):
-        return True
-        
-    # Method 3: Critical word detection
-    if _check_critical_words(doc, text_lower):
-        return True
-    
-    return False
-
-def _check_exact_phrases(doc):
-    """Check for exact risk phrase matches with context validation"""
-    if not matcher:
-        return False
-    matches = matcher(doc)
-    for match_id, start, end in matches:
-        matched_phrase = doc[start:end].text.lower()
-        
-        # Skip "help" phrases in positive context
-        if any(word in matched_phrase for word in ['help', 'helping']):
-            context = _get_word_context(doc, start, end, 10)
-            if any(positive in context for positive in positive_indicators):
-                continue
-        
-        return True  # Found genuine risk phrase
-    return False
-
-def _check_fuzzy_matches(text_lower):
-    """Check for fuzzy matches of critical phrases"""
-    # Special handling for wanna/gonna phrases - need exact dangerous combinations
-    if 'wanna' in text_lower or 'gonna' in text_lower:
-        # Only check for exact dangerous phrases with wanna/gonna
-        dangerous_combos = ['wanna die', 'wanna kill', 'wanna hurt', 'wanna cut', 
-                           'gonna die', 'gonna kill', 'gonna hurt', 'gonna cut',
-                           'wanna end', 'gonna end']
-        for combo in dangerous_combos:
-            if combo in text_lower:
-                return True
-        # Don't do fuzzy matching on wanna/gonna phrases - too many false positives
-        return False
-    
-    # For non-wanna/gonna phrases, use fuzzy matching but with higher threshold
-    for phrase in fuzzy_phrases:
-        # Skip wanna/gonna phrases - handled above
-        if 'wanna' in phrase or 'gonna' in phrase:
-            continue
-            
-        threshold = 85 if len(phrase) < 10 else 90  # Increased thresholds
-        if fuzz.partial_ratio(phrase, text_lower) > threshold:
-            # Skip if it's about helping others (specific to "want to die")
-            if phrase == 'want to die' and any(word in text_lower for word in ['help', 'support', 'people']):
-                continue
-            return True
-    return False
-
-def _check_critical_words(doc, text_lower):
-    """Check for critical words with context validation"""
-    # Special handling for "wanna" and "gonna" - they need dangerous words nearby
-    if 'wanna' in text_lower or 'gonna' in text_lower:
-        # Only flag if followed by actually dangerous words
-        dangerous_after_wanna = ['die', 'dead', 'kill', 'hurt', 'harm', 'cut', 'end', 'suicide', 'overdose', 'jump', 'hang', 'drown']
-        for danger_word in dangerous_after_wanna:
-            if danger_word in text_lower:
-                # Check proximity - within 3 words
-                words = text_lower.split()
-                for i, word in enumerate(words):
-                    if 'wanna' in word or 'gonna' in word:
-                        # Check next 3 words for danger
-                        next_words = ' '.join(words[i:i+4])
-                        if danger_word in next_words:
-                            return True
-    
-    for token in doc:
-        token_lemma = token.lemma_.lower()
-        if token_lemma not in critical_tokens:
-            continue
-            
-        # Skip "wanna" and "gonna" - handled above
-        if token_lemma in ['wanna', 'gonna']:
-            continue
-            
-        # Check if token is in a safe context (false positive check)
-        if _is_token_safe(token_lemma, text_lower):
-            continue
-            
-        # Check if token is in concerning context
-        context = _get_char_context(text_lower, token.idx, 20)
-        if any(ctx in context for ctx in concerning_context):
-            # Skip if it's just "wanna" or "gonna" in context without danger words
-            if not any(danger in context for danger in ['die', 'dead', 'kill', 'hurt', 'harm', 'cut', 'end']):
-                continue
-            return True
-    
-    return False
-
-def _is_token_safe(token_lemma, text_lower):
-    """Check if a critical token is in a safe context (false positive)"""
-    for pattern in false_positive_patterns:
-        if pattern['token'] == token_lemma:
-            if any(safe_ctx in text_lower for safe_ctx in pattern['safe_context']):
-                return True
-    return False
-
-def _get_word_context(doc, start, end, word_count):
-    """Get surrounding word context from spaCy doc"""
-    context_start = max(0, start - word_count)
-    context_end = min(len(doc), end + word_count)
-    return doc[context_start:context_end].text.lower()
-
-def _get_char_context(text, char_idx, char_count):
-    """Get surrounding character context from text"""
-    context_start = max(0, char_idx - char_count)
-    context_end = min(len(text), char_idx + char_count)
-    return text[context_start:context_end]
-
-def get_crisis_resources():
-    """
-    Return formatted crisis resources with the crisis message
-    """
-    resources = risk_data['crisis_resources']
-    message = risk_data['crisis_message']
-    
-    # Format the complete crisis response
-    response = f"\n **{message['header']}**\n\n"
-    response += f"{message['body']}\n\n"
-    
-    for service, info in resources.items():
-        response += f"**{service}**: {info['number']}\n"
-        response += f"   {info['description']}\n\n"
-    
-    response += f"\n{message['footer']}\n"
-    response += f"\n{message['continue_prompt']}"
-    
-    return response
+# left to call the fallback if model is not available
