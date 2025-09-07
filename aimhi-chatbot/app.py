@@ -2,7 +2,8 @@
 import os
 import uuid
 import logging
-import sqlite3
+# TODO: Supabase Migration - SQLite import removed
+# import sqlite3
 import atexit
 
 # --- Flask and Extensions (Required) ---
@@ -12,17 +13,21 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect, generate_csrf, validate_csrf
 
-# --- Database Connection Management (Connection Pool) ---
-from contextlib import contextmanager
-from queue import LifoQueue, Empty
+# --- Database Connection Management ---
+# TODO: Supabase client will replace SQLite connection pooling
+# from contextlib import contextmanager
+# from queue import LifoQueue, Empty
 
 # --- Load Environment Variables ---
 from dotenv import load_dotenv
 
 # Local application imports
-from core.router import route_message
-from core.session import get_session
-from database.repository_v2 import init_db, DATABASE_PATH
+from core.router import route_message, get_current_state
+from core.session import touch_session
+
+# TODO: Replace with Supabase imports after migration
+# from config.supabase import supabase
+# REMOVED: from database.repository_v2 import init_db, DATABASE_PATH
 
 load_dotenv()
 
@@ -30,8 +35,9 @@ FLASK_ENV = os.getenv("FLASK_ENV", "production")
 IS_PROD   = (FLASK_ENV == "production")
 SECRET_KEY = os.getenv("SECRET_KEY")
 CSRF_ENABLED = os.getenv("CSRF_ENABLED", "true").lower() == "true"
-POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
-POOL_TIMEOUT = float(os.getenv("DB_POOL_TIMEOUT", "5"))  # seconds to wait for a free connection
+# TODO: Remove SQLite-specific configuration after Supabase migration
+# POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
+# POOL_TIMEOUT = float(os.getenv("DB_POOL_TIMEOUT", "5"))  # seconds to wait for a free connection
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 origins_env = os.getenv("CORS_ORIGINS", "").strip()
 
@@ -116,111 +122,43 @@ limiter = Limiter(
 
 
 
-# --- DB Connection Pool (SQLite + LIFO queue) ---
-_pool: LifoQueue[sqlite3.Connection] = LifoQueue(maxsize=POOL_SIZE)
-
-def _create_db_connection() -> sqlite3.Connection:
-    """
-    Create a configured SQLite connection.
-
-    Note: isolation_level=None => autocommit is ON by default; we start
-    transactions explicitly with BEGIN and finish with COMMIT/ROLLBACK.
-    """
-    conn = sqlite3.connect(
-        str(DATABASE_PATH),
-        timeout=30,
-        check_same_thread=False,
-        isolation_level=None,  # explicit transaction control
-    )
-    conn.row_factory = sqlite3.Row
-    # Pragmas (applied per-connection)
-    conn.execute("PRAGMA busy_timeout = 30000")
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute("PRAGMA strict = ON")
-    return conn
-
-def _get_conn() -> sqlite3.Connection:
-    """Get a connection from pool or create a new one."""
-    try:
-        return _pool.get(block=False)
-    except Empty:
-        return _create_db_connection()
-
-def _return_conn(conn: sqlite3.Connection) -> None:
-    """Return connection to pool; if full or broken, close."""
-    if conn is None:
-        return
-    try:
-        _pool.put(conn, block=False)
-    except Exception:
-        try:
-            conn.close()
-        except Exception:
-            pass
-
-@contextmanager
-def get_db():
-    """
-    Usage:
-        with get_db() as conn:
-            cur = conn.execute("SELECT 1")
-            ...
-    Manages BEGIN/COMMIT/ROLLBACK and returns pooled connections.
-    """
-    conn = _get_conn()
-    try:
-        conn.execute("BEGIN")
-        yield conn
-        conn.execute("COMMIT")
-    except Exception as e:
-        try:
-            conn.execute("ROLLBACK")
-        except Exception:
-            logger.exception("Failed to ROLLBACK after error")
-        logger.exception("DB error: %s", e)
-        raise
-    finally:
-        _return_conn(conn)
-
-# Optional: pre-warm a couple of connections
-try:
-    for _ in range(min(POOL_SIZE, 2)):
-        _return_conn(_create_db_connection())
-except Exception:
-    logger.warning("Failed to pre-warm DB pool", exc_info=True)
-
-def _close_pool():
-    """Close any pooled connections at process exit."""
-    drained = 0
-    while True:
-        try:
-            conn = _pool.get(block=False)
-        except Empty:
-            break
-        try:
-            conn.close()
-            drained += 1
-        except Exception:
-            pass
-    logger.info("Database pool closed (drained %d conns)", drained)
-
-atexit.register(_close_pool)
+# TODO: Supabase Migration - Connection pool logic removed
+# All database operations will use Supabase client instead of SQLite connection pooling
+# 
+# REMOVED: ~90 lines of complex SQLite connection pool management including:
+# - LifoQueue connection pool (_pool)
+# - Connection creation and management functions
+# - Transaction management with BEGIN/COMMIT/ROLLBACK
+# - Connection pooling optimization and cleanup
+# - Process exit handlers for connection cleanup
+#
+# REPLACEMENT: Simple Supabase client initialization (to be implemented):
+# from config.supabase import supabase
+#
+# Benefits after migration:
+# - No connection management needed (handled by Supabase)
+# - No transaction complexity (atomic operations built-in)
+# - No connection leaks or cleanup needed
+# - Automatic scaling and connection pooling
 
 
 
 
-# --- Database Initialization (Required) ---
-try:
-    init_db()
-    logger.info("✅ Database initialized successfully.")
-except Exception as e:
-    logger.critical("❌ FATAL: Database initialization failed", exc_info=True)
+# --- Database Initialization ---
+# TODO: Supabase Migration - Replace SQLite initialization
+logger.info("✅ Database initialization skipped during migration.")
 
-    if IS_PROD:
-        raise SystemExit("Startup aborted: Database could not be initialized.")
-    else:
-        raise  # Shows full traceback in dev for debugging
+# TODO: Uncomment after Supabase migration is complete:
+# try:
+#     from config.supabase import supabase
+#     supabase.table('sessions').select('count').limit(1).execute()
+#     logger.info("✅ Supabase connection verified successfully.")
+# except Exception as e:
+#     logger.critical("❌ FATAL: Supabase connection failed", exc_info=True)
+#     if IS_PROD:
+#         raise SystemExit("Startup aborted: Database could not be initialized.")
+#     else:
+#         raise
 
 
 
@@ -235,6 +173,16 @@ def index():
 
 @app.route("/health")
 def health_check():
+    # TODO: Supabase Migration - Add database connectivity check
+    # try:
+    #     from config.supabase import supabase
+    #     # Simple connectivity test
+    #     response = supabase.table('sessions').select('count').limit(1).execute()
+    #     return jsonify({"status": "ok", "database": "connected"}), 200
+    # except Exception as e:
+    #     logger.error(f"Database health check failed: {e}")
+    #     return jsonify({"status": "error", "database": "disconnected"}), 503
+    
     return jsonify({"status": "ok"}), 200
 
 # CSRF exemptions for views that do not need automatic form-based CSRF
@@ -288,7 +236,8 @@ def chat():
         result = route_message(session_id, message)
         reply, debug_info = (result if isinstance(result, tuple) and len(result) == 2 else (str(result), {}))
 
-        fsm_state = get_session(session_id)["fsm"].state
+        # Get current FSM state from router
+        fsm_state = get_current_state(session_id)
 
         payload = {
             "reply": reply,
@@ -302,9 +251,16 @@ def chat():
 
         return jsonify(payload), 200
 
-    except sqlite3.Error as e:
-        logger.error("Database error in /chat for session %s: %s", session_id, e)
-        return jsonify({"error": "Database temporarily unavailable. Please try again."}), 503
+    # TODO: Supabase Migration - Update error handling for Supabase exceptions
+    # except sqlite3.Error as e:
+    #     logger.error("Database error in /chat for session %s: %s", session_id, e)
+    #     return jsonify({"error": "Database temporarily unavailable. Please try again."}), 503
+    
+    # TODO: Replace with Supabase error handling:
+    # from postgrest.exceptions import APIError
+    # except APIError as e:
+    #     logger.error("Supabase error in /chat for session %s: %s", session_id, e)
+    #     return jsonify({"error": "Database temporarily unavailable. Please try again."}), 503
 
     except Exception:
         logger.exception("Unhandled error in /chat for session %s", session_id)

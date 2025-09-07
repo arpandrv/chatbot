@@ -12,7 +12,7 @@ import torch
 import torch
 
 
-from fallbacks.keyword_sentiment import analyze_sentiment_keywords
+from primary_fallback.sentiment_fallback_llm import analyze_sentiment_llm
 
 logger = logging.getLogger(__name__)
 
@@ -75,5 +75,10 @@ def analyze_sentiment(text: str) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Sentiment model failed: {e}", exc_info=True)
-        label, confidence = analyze_sentiment_keywords(text)
-        return {"label": label, "confidence": confidence, "method": "keyword_fallback_on_error"}
+        result = analyze_sentiment_llm(text)
+        return {
+            "label": result.get("label", "neutral"), 
+            "confidence": "NA for LLMs", 
+            "method": "llm_fallback_on_error",
+            "fallback_reason": str(e)
+        }

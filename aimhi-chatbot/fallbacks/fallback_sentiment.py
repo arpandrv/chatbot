@@ -7,7 +7,7 @@ Used when Twitter-RoBERTa model is unavailable.
 
 from typing import Tuple
 
-def analyze_sentiment_keywords(text: str) -> Tuple[str, float]:
+def analyze_sentiment_fallback(text: str) -> Tuple[str, float]:
     """
     Fallback keyword-based sentiment analysis with word boundaries and negation.
     Used when Twitter-RoBERTa is unavailable.

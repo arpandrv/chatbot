@@ -1,94 +1,97 @@
-# chatbot/aimhi-chatbot/core/fsm.py
-
 from transitions import Machine
+from typing import Dict, Optional
 
-class ChatBotFSM:
-    # Define all states in order
-    states = [
-        'welcome', 
-        'support_people', 
-        'strengths', 
-        'worries', 
-        'goals', 
-        'summary',
-        'llm_conversation'
-    ]
+# Define conversation states
+STATES = [
+    'welcome', 
+    'support_people', 
+    'strengths', 
+    'worries', 
+    'goals', 
+    'llm_conversation'
+]
 
-    def __init__(self, session_id: str, initial_state: str = 'welcome'):
-        self.session_id = session_id
+def create_fsm(session_id: str, initial_state: str = 'welcome') -> Dict:
+    """Create FSM data with transitions state machine.
+    
+    Args:
+        session_id: Session identifier
+        initial_state: Starting state (default: 'welcome')
         
-        # Create the state machine with simple forward-only flow
-        self.machine = Machine(
-            model=self, 
-            states=ChatBotFSM.states, 
-            initial=initial_state,  # Start from provided state
-            auto_transitions=False,  # No automatic transitions
-            ignore_invalid_triggers=True  # Don't crash on invalid transitions
-        )
+    Returns:
+        Dictionary containing FSM machine and session data
+    """
+    # Create the state machine
+    machine = Machine(
+        states=STATES,
+        initial=initial_state,
+        auto_transitions=False,
+        ignore_invalid_triggers=True
+    )
+    
+    # Define linear conversation flow
+    machine.add_transition('next_step', 'welcome', 'support_people')
+    machine.add_transition('next_step', 'support_people', 'strengths')
+    machine.add_transition('next_step', 'strengths', 'worries')
+    machine.add_transition('next_step', 'worries', 'goals')
+    machine.add_transition('next_step', 'goals', 'llm_conversation')
+    # No transition from llm_conversation - terminal state
+    
+    # Return FSM data structure
+    return {
+        'session_id': session_id,
+        'machine': machine,
+        'responses': {},  # {state: user_response}
+        'attempts': {}    # {state: attempt_count}
+    }
 
-        # Define ONLY forward transitions - one way flow
-        self.machine.add_transition(trigger='next_step', source='welcome', dest='support_people')
-        self.machine.add_transition(trigger='next_step', source='support_people', dest='strengths')
-        self.machine.add_transition(trigger='next_step', source='strengths', dest='worries')
-        self.machine.add_transition(trigger='next_step', source='worries', dest='goals')
-        self.machine.add_transition(trigger='next_step', source='goals', dest='summary')
-        self.machine.add_transition(trigger='start_llm_chat', source='summary', dest='llm_conversation')
-        # No transition from llm_conversation - it's the final state
+# Helper functions for FSM operations
 
-        # Store user responses for each step
-        self.responses = {
-            'support_people': None,
-            'strengths': None,
-            'worries': None,
-            'goals': None
-        }
-        
-        # Track attempts for progressive fallback
-        self.attempts = {
-            'support_people': 0,
-            'strengths': 0,
-            'worries': 0,
-            'goals': 0
-        }
-    
-    def save_response(self, response: str):
-        """Save the user's response for the current step"""
-        if self.state in self.responses:
-            self.responses[self.state] = response
-    
-    def get_response(self, state: str) -> str | None:
-        """Get the user's response for a specific step"""
-        return self.responses.get(state, None)
-    
-    def get_all_responses(self) -> dict:
-        """Get all user responses"""
-        return self.responses
-    
-    def increment_attempt(self):
-        """Increment attempt counter for current step"""
-        if self.state in self.attempts:
-            self.attempts[self.state] += 1
-    
-    def get_attempt_count(self) -> int:
-        """Get attempt count for current step"""
-        return self.attempts.get(self.state, 0)
-    
-    def should_advance(self) -> bool:
-        """Check if we should force advance after multiple attempts"""
-        return self.get_attempt_count() >= 2
-    
-    def reset_attempts(self):
-        """Reset attempt counter for current step"""
-        if self.state in self.attempts:
-            self.attempts[self.state] = 0
-    
-    def can_advance(self) -> bool:
-        """Check if FSM can move to next state"""
-        # Can't advance from final states
-        if self.state in ['llm_conversation']:
-            return False
-        # Can advance from summary only via start_llm_chat
-        if self.state == 'summary':
-            return True  # But needs different trigger
-        # All other states can advance
+def get_state(fsm_data: Dict) -> str:
+    """Get current state."""
+    return fsm_data['machine'].state
+
+def advance_state(fsm_data: Dict) -> bool:
+    """Move to next state if possible."""
+    try:
+        fsm_data['machine'].trigger('next_step')
         return True
+    except:
+        return False
+
+def can_advance(fsm_data: Dict) -> bool:
+    """Check if FSM can move to next state."""
+    current = get_state(fsm_data)
+    return current != 'llm_conversation'
+
+def save_response(fsm_data: Dict, response: str) -> None:
+    """Save user response for current state."""
+    current = get_state(fsm_data)
+    fsm_data['responses'][current] = response
+
+def get_response(fsm_data: Dict, state: str) -> Optional[str]:
+    """Get user response for a specific state."""
+    return fsm_data['responses'].get(state)
+
+def get_all_responses(fsm_data: Dict) -> Dict[str, str]:
+    """Get all user responses."""
+    return fsm_data['responses'].copy()
+
+def increment_attempt(fsm_data: Dict) -> None:
+    """Increment attempt counter for current state."""
+    current = get_state(fsm_data)
+    fsm_data['attempts'][current] = fsm_data['attempts'].get(current, 0) + 1
+
+def get_attempt_count(fsm_data: Dict) -> int:
+    """Get attempt count for current state."""
+    current = get_state(fsm_data)
+    return fsm_data['attempts'].get(current, 0)
+
+def should_force_advance(fsm_data: Dict, max_attempts: int = 2) -> bool:
+    """Check if we should force advance after multiple attempts."""
+    return get_attempt_count(fsm_data) >= max_attempts
+
+def reset_attempts(fsm_data: Dict) -> None:
+    """Reset attempt counter for current state."""
+    current = get_state(fsm_data)
+    fsm_data['attempts'][current] = 0

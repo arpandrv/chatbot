@@ -3,6 +3,7 @@ import json
 import logging
 from typing import Optional, Dict
 import requests
+from primary_fallback.risk_fallback_sucidality import detect_risk_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +51,15 @@ def detect_risk_openai(text: str, timeout: Optional[float] = None) -> Dict:
         message = result["choices"][0]["message"]["content"].strip()
         return parse_json_response(message)
     except Exception as e:
-        logger.error(f"OpenAI error: {str(e)}")
-        return {"label": "no_risk", "error": str(e)}
+        logger.error(f"OpenAI error: {str(e)}, falling back to local model")
+        # Fallback to local HuggingFace model
+        label, confidence, error = detect_risk_fallback(text)
+        return {
+            "label": label,
+            "confidence": confidence,
+            "method": "huggingface_fallback",
+            "error": error or str(e)
+        }
 
 
 def detect_risk_ollama(text: str, timeout: Optional[float] = None) -> Dict:
@@ -73,8 +81,15 @@ def detect_risk_ollama(text: str, timeout: Optional[float] = None) -> Dict:
         message = result.get("response", "").strip()
         return parse_json_response(message)
     except Exception as e:
-        logger.error(f"Ollama error: {str(e)}")
-        return {"label": "no_risk", "error": str(e)}
+        logger.error(f"Ollama error: {str(e)}, falling back to local model")
+        # Fallback to local HuggingFace model
+        label, confidence, error = detect_risk_fallback(text)
+        return {
+            "label": label,
+            "confidence": confidence,
+            "method": "huggingface_fallback",
+            "error": error or str(e)
+        }
 
 
 def parse_json_response(response_text: str) -> Dict:
@@ -90,14 +105,38 @@ def parse_json_response(response_text: str) -> Dict:
 
 
 def detect_risk_llm(text: str, timeout: Optional[float] = None) -> Dict:
+    """Detect risk using LLM with automatic fallback to local model."""
     if LLM_PROVIDER == "ollama":
         return detect_risk_ollama(text, timeout)
     return detect_risk_openai(text, timeout)
 
 
-# def is_llm_available() -> bool:
-#     if LLM_PROVIDER == "ollama":
-#         return True
-#     return bool(API_KEY)
+def is_llm_available() -> bool:
+    """Check if LLM service is available."""
+    if LLM_PROVIDER == "ollama":
+        # Check if Ollama server is running
+        try:
+            response = requests.get(f"{OLLAMA_API_BASE}/api/tags", timeout=1.0)
+            return response.status_code == 200
+        except:
+            return False
+    return bool(API_KEY)
 
-# left to call the fallback if model is not available
+
+def detect_risk(text: str, timeout: Optional[float] = None) -> Dict:
+    """Main risk detection function with automatic fallback."""
+    # Try LLM first if available
+    if is_llm_available():
+        result = detect_risk_llm(text, timeout)
+        if result.get("label") and not result.get("method") == "huggingface_fallback":
+            return result
+    
+    # Direct fallback if LLM not available
+    logger.info("LLM not available, using HuggingFace fallback")
+    label, confidence, error = detect_risk_fallback(text)
+    return {
+        "label": label,
+        "confidence": confidence,
+        "method": "huggingface_fallback",
+        "error": error
+    }

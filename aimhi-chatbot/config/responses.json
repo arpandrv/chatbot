@@ -176,26 +176,6 @@
             "I understand. Goals can be hard to think about sometimes."
         ]
     },
-    "summary": {
-        "prompt": [
-            "Thanks for yarning with me today. It takes strength to talk about these things, and you should feel proud for sharing.",
-            "Thank you for having this yarn with me today. You've shown real strength by talking about your support people, recognizing your abilities, sharing your worries, and thinking about your goals.",
-            "I really appreciate you sharing all of this with me. You've done something really positive by having this conversation.",
-            "Good on ya for having this yarn with me. It shows real strength to talk about these things."
-        ],
-        "closing": [
-            "Remember - you have people who support you and strengths to build on as you work towards your goals. You've got this, and you don't have to face challenges alone. Take care of yourself.",
-            "You've shown real strength today by talking about these things. Remember, you have support, you have talents, and you have goals worth working towards. Stay deadly!",
-            "Thanks again for this yarn. You have a support network, amazing strengths, and clear goals - that's a powerful combination. Take care, and remember you're not alone.",
-            "I'm proud of you for having this conversation. You've got people who care, strengths to be proud of, and goals to work towards. Keep being strong!"
-        ],
-        "followup": [
-            "Would you like to yarn about any of these topics more, or is there anything else on your mind?",
-            "Is there anything else you'd like to talk about? I'm here if you need.",
-            "How are you feeling after our chat? Would you like to explore anything further?",
-            "Do you feel like we've covered everything, or is there more you'd like to discuss?"
-        ]
-    },
     "feeling_response": {
         "positive": [
             "That's good to hear! It's great you're feeling positive.",

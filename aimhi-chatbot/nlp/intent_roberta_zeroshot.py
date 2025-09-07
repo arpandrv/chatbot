@@ -16,7 +16,7 @@ from functools import lru_cache
 import numpy as np
 from transformers import AutoTokenizer
 import onnxruntime as ort
-from fallbacks.rule_based_intent import classify_intent_rule_based
+from primary_fallback.intent_fallback_llm import classify_intent_llm
 
 load_dotenv()
 
@@ -101,10 +101,15 @@ def classify_intent(text: str, threshold: float = THRESHOLD) -> Dict[str, Any]:
     return {'label': best_intent, 'confidence': confidence, 'method': 'roberta_zero_shot'}
 
 
-def classify_intent_with_fallback(text: str, current_step: str) -> Dict[str, Any]:
+def classify_intent_with_fallback(text: str, current_step: str = None) -> Dict[str, Any]:
     try:
-        intent, confidence = classify_intent_rule_based(text, current_step)
-        return {'label': intent, 'confidence': confidence, 'method': 'rule_based'}
+        result = classify_intent_llm(text, current_step)
+        return {
+            'label': result.get('label', 'unclear'), 
+            'confidence': 'NA for LLMs', 
+            'method': 'llm_fallback',
+            'fallback_reason': result.get('fallback_reason', 'roberta_low_confidence')
+        }
     except Exception as fallback_error:
-        logger.error(f"Rule-based intent classification failed: {fallback_error}")
+        logger.error(f"LLM intent classification failed: {fallback_error}")
         return {'label': 'unclear', 'confidence': 0.0, 'method': 'all_failed'}
