@@ -12,12 +12,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Supabase Configuration (from environment)
-SUPABASE_URL: Optional[str] = os.getenv('SUPABASE_URL')
-SUPABASE_ANON_KEY: Optional[str] = os.getenv('SUPABASE_ANON_KEY')
-SUPABASE_SERVICE_KEY: Optional[str] = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
+SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+# JWT secret used to validate Supabase-issued JWTs
+JWT_SECRET = os.getenv('SUPABASE_JWT_SECRET')
 
-# Database URL for direct PostgreSQL connections (optional)
-DATABASE_URL: Optional[str] = os.getenv('DATABASE_URL')
+# Direct PostgreSQL connections are not used in this app; all access goes through Supabase clients.
 
 # Create Supabase clients (guarded to avoid import-time failures)
 try:
@@ -30,8 +31,6 @@ try:
 except Exception:
     supabase_anon = None  # type: ignore
 
-# JWT secret used to validate Supabase-issued JWTs (Settings → API → JWT Secret)
-JWT_SECRET: Optional[str] = os.getenv('SUPABASE_JWT_SECRET')
 
 
 def test_connection() -> bool:
@@ -52,4 +51,3 @@ def test_connection() -> bool:
 
 if __name__ == "__main__":
     test_connection()
-

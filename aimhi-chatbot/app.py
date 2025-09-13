@@ -28,6 +28,9 @@ FLASK_ENV = os.getenv("FLASK_ENV", "production")
 IS_PROD = (FLASK_ENV == "production")
 SECRET_KEY = os.getenv("SECRET_KEY")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+RATE_LIMIT_STORAGE = os.getenv("RATE_LIMIT_STORAGE", "memory://")
+RATE_LIMIT_DAY = int(os.getenv("RATE_LIMIT_DAY", "200"))
+RATE_LIMIT_HOUR = int(os.getenv("RATE_LIMIT_HOUR", "50"))
 origins_env = os.getenv("CORS_ORIGINS", "").strip()
 
 # --- Logging Configuration ---
@@ -74,8 +77,8 @@ CORS(app, resources={
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://"
+    default_limits=[f"{RATE_LIMIT_DAY} per day", f"{RATE_LIMIT_HOUR} per hour"],
+    storage_uri=RATE_LIMIT_STORAGE
 )
 
 # --- Database Connection Test ---

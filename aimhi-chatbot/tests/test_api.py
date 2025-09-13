@@ -1,0 +1,30 @@
+"""
+API tests for aimhi-chatbot/app.py
+
+Comments only — implementation to be added later.
+
+Test setup:
+- Use Flask app from aimhi_chatbot.app (import app) and app.test_client().
+- Patch config.supabase_client.test_connection to control /health status.
+- Patch config.auth_middleware.extract_user_from_token or wrap @require_auth with patched request context for auth.
+- Patch database.repository functions (create_session, get_session, save_message, get_chat_history,
+  accept_response, get_user_sessions, record_risk_detection, record_intent_classification) to avoid DB.
+- Patch core.router.route_message to return deterministic replies for /api/chat.
+
+Test cases:
+- /health: returns 200 with status ok when test_connection True; returns 503 with status degraded when False.
+- /auth/register: with email+password -> 201 and response fields; patch supabase_anon.auth.sign_up.
+- /auth/login: with email+password -> 200 with tokens; invalid -> 401; patch sign_in_with_password.
+- /auth/logout: requires auth; returns 200 and calls supabase_anon.auth.sign_out; ensure require_auth enforced.
+- /auth/me: requires auth; returns user_id from token.
+- /sessions (POST): requires auth; creates session with returned id and default or provided fsm_state; 201 status.
+- /sessions (GET): requires auth; returns list of sessions; respects limit query param (<=50).
+- /sessions/<id>/messages (GET): requires auth; returns chat history; 403 when get_chat_history None.
+- /sessions/<id>/accept (POST): requires auth; validates payload; success -> 200; failure -> 500.
+- /api/chat (POST): requires auth; saves user message, calls route_message, saves bot message; returns ids and reply.
+- Error handlers: unknown route -> 404 JSON; wrong method -> 405 JSON; rate limit 429 shape (can be simulated via limiter limit override or patch).
+
+Notes:
+- Do not hit network; all supabase and router/NLP calls must be patched.
+- For auth, patch extract_user_from_token to return a fixed user id or simulate failures for 401 paths.
+"""

@@ -1,57 +1,35 @@
-# chatbot/aimhi_chatbot/nlp/sentiment.py
-
+import os
 import logging
-from functools import lru_cache
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, List
 
-import torch
-import torch.nn.functional as F
-from transformers import PreTrainedTokenizer, PreTrainedModel, AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
-import torch
-
-import torch
-
-
+import requests
 from primary_fallback.sentiment_fallback_llm import analyze_sentiment_llm
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "cardiffnlp/twitter-roberta-base-sentiment-latest"
+HF_TOKEN = os.getenv("HF_TOKEN")
+HF_SENTIMENT_API_URL = os.getenv(
+    "HF_SENTIMENT_API_URL",
+    "https://router.huggingface.co/hf-inference/models/cardiffnlp/twitter-roberta-base-sentiment",
+)
 
-@lru_cache()
-def load_model_and_tokenizer() -> Tuple[PreTrainedTokenizer, PreTrainedModel, torch.device, List[str]]:
-    """
-    Loads the tokenizer, model, device, and sentiment labels for the Twitter-RoBERTa model.
 
-    Returns:
-        Tuple containing:
-            - tokenizer: Hugging Face tokenizer
-            - model: Pretrained PyTorch model
-            - device: torch.device (cuda or cpu)
-            - labels: List of sentiment labels (e.g., ["Negative", "Neutral", "Positive"])
-    """
-    logger.info(f"Loading sentiment model: {MODEL_NAME}")
-    
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
-    model.eval()
-    
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-
-    # Load model config to retrieve correct label mapping
-    config = AutoConfig.from_pretrained(MODEL_NAME)
-    labels = [config.id2label[i] for i in range(len(config.id2label))]
-
-    logger.info(f"Model loaded on device: {device} with labels: {labels}")
-    return tokenizer, model, device, labels
+def _normalize_sentiment_label(label: str) -> str:
+    label_check = label.lower()
+    if "neg" in label_check or label_check in {"label_0", "negative"}:
+        return "negative"
+    if "neu" in label_check or label_check in {"label_1", "neutral"}:
+        return "neutral"
+    if "pos" in label_check or label_check in {"label_2", "positive"}:
+        return "positive"
+    return label_check
 
 
 def analyze_sentiment(text: str) -> Dict[str, Any]:
     """
-    Analyze sentiment using a cached Twitter-RoBERTa model.
+    Analyze sentiment using the Hugging Face Inference API with Twitter-RoBERTa sentiment.
     Returns: {'label': str, 'confidence': float, 'method': str}
-    Falls back to keyword-based method only if model fails.
+    Falls back to LLM-based method only if API call fails.
     """
     text = text.strip()
     if not text:
@@ -59,26 +37,28 @@ def analyze_sentiment(text: str) -> Dict[str, Any]:
         return {"label": "neutral", "confidence": 0.0, "method": "empty_input"}
 
     try:
-        tokenizer, model, device, labels = load_model_and_tokenizer()
-        inputs = tokenizer(
-            text, return_tensors="pt", truncation=True, padding=True, max_length=512
-        ).to(device)
+        if not HF_TOKEN:
+            raise RuntimeError("HF_TOKEN not set; cannot call HF Inference API")
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+        payload = {"inputs": text}
+        resp = requests.post(HF_SENTIMENT_API_URL, headers=headers, json=payload)
+        resp.raise_for_status()
+        result: List[Dict[str, Any]] = resp.json()
+        if not isinstance(result, list) or not result:
+            raise RuntimeError("Empty sentiment response from HF API")
 
-        with torch.no_grad():
-            outputs = model(**inputs)
-            probs = F.softmax(outputs.logits, dim=-1).cpu().numpy()[0]
-
-        idx = int(probs.argmax())
-        label = labels[idx]
-        confidence = float(probs[idx])
-        return {"label": label.lower(), "confidence": confidence, "method": "twitter_roberta"}
+        # Select top label by score
+        top = max(result, key=lambda r: float(r.get("score", 0.0)))
+        label = _normalize_sentiment_label(str(top.get("label", "neutral")))
+        confidence = float(top.get("score", 0.0))
+        return {"label": label, "confidence": confidence, "method": "hf_text_classification"}
 
     except Exception as e:
-        logger.error(f"Sentiment model failed: {e}", exc_info=True)
+        logger.error(f"Sentiment HF API failed: {e}", exc_info=True)
         result = analyze_sentiment_llm(text)
         return {
-            "label": result.get("label", "neutral"), 
-            "confidence": "NA for LLMs", 
+            "label": result.get("label", "neutral"),
+            "confidence": "NA for LLMs",
             "method": "llm_fallback_on_error",
-            "fallback_reason": str(e)
+            "fallback_reason": str(e),
         }

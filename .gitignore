@@ -48,8 +48,11 @@ Thumbs.db
 *.bin
 *.model
 
-# AI models folder
-aimhi-chatbot/ai_models/
-# Local scripts (do not commit)
+
 /scripts/
 AGENTS.md
+CLAUDE.MD
+# Explicitly ignore documentation files not needed in repo
+CLAUDE.md
+aimhi-chatbot/aimhi-y_chatbot_implementation_plan.md
+aimhi-chatbot/aimhi-y_chatbot_prd.md
