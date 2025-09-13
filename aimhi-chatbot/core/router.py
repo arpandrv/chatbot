@@ -1,299 +1,248 @@
-# chatbot/aimhi-chatbot/core/router.py
+"""
+Simplified User-Scoped Message Router
+====================================
+Reduced try/except blocks and converted FSM class to simple functions.
+"""
 
 import json
 import logging
 import time
 import os
+from typing import Dict, List, Optional, Any
 
 # --- Core Application Imports ---
-from core.fsm import (create_fsm, get_state, advance_state, can_advance,
-                      save_response, increment_attempt, get_attempt_count,
-                      should_force_advance, reset_attempts)
-from core.session import validate_session, touch_session
+from database.repository import (
+    get_session, update_session_state, record_risk_detection,
+    record_intent_classification
+)
 
-# --- Graceful Imports with Fallbacks ---
-# This makes the router resilient even if some modules are missing or broken.
 
-# Database (required for proper operation)
-# TODO: Supabase Migration - Feature flag for database provider
-DATABASE_PROVIDER = os.getenv('DATABASE_PROVIDER', 'sqlite')  # 'sqlite' or 'supabase'
+# --- NLP Components ---
+import sys
+sys.path.append('../')
 
-# TODO: Database imports removed during migration cleanup
-# Database operations will be replaced with Supabase calls after migration
+try:
+    from nlp.risk_detector import contains_risk, get_crisis_resources
+    from nlp.intent_roberta_zeroshot import classify_intent
+    from nlp.preprocessor import normalize_text
+    from nlp.response_selector import VariedResponseSelector
+    from nlp.sentiment import analyze_sentiment
+except ImportError as e:
+    logging.error(f"Failed to import NLP components: {e}")
+    # Fallback implementations
+    def contains_risk(text): return False
+    def get_crisis_resources(): return "Crisis resources would be shown here."
+    def classify_intent(text, current_step=None): return {'label': 'unclear', 'confidence': 0.0}
+    def normalize_text(text): return text.strip()
+    def analyze_sentiment(text): return {'label': 'neutral'}
+    
+    class VariedResponseSelector:
+        def get_response(self, *args, **kwargs): return "Response not available"
+        def get_prompt(self, *args, **kwargs): return "Prompt not available"
 
-def save_message(session_id: str, role: str, message: str):
-    """TODO: Replace with Supabase call"""
-    pass
-
-def save_analytics_event(event_type: str, metadata: dict):
-    """TODO: Replace with Supabase call"""
-    pass
-
-def update_session_state(session_id: str, state: str):
-    """TODO: Replace with Supabase call"""
-    pass
-
-# LLM (optional - controlled by environment variable)
-LLM_ENABLED = os.getenv('LLM_ENABLED', 'false').lower() == 'true'
-
-if LLM_ENABLED:
-    try:
-        from llm.handoff_manager import handle_llm_response
-        llm_handoff = None  # Using functional approach now
-    except ImportError as e:
-        logger = logging.getLogger(__name__)
-        logger.error(f"LLM enabled but import failed: {e}")
-        raise  # Fail fast instead of limping along
-else:
-    llm_handoff = None
-
-# NLP Components
-from nlp.risk_detector import contains_risk, get_crisis_resources
-from nlp.intent_roberta_zeroshot import classify_intent
-from nlp.preprocessor import normalize_text
-from nlp.response_selector import VariedResponseSelector
-from nlp.sentiment import analyze_sentiment
-
-# --- Component Initialization ---
+# --- Configuration ---
 logger = logging.getLogger(__name__)
 response_selector = VariedResponseSelector()
+LLM_ENABLED = os.getenv('LLM_ENABLED', 'false').lower() == 'true'
 
-# FSM storage - in-memory cache of active FSMs
-_fsm_cache = {}  # {session_id: fsm_data}
+# --- FSM Functions (converted from class) ---
+FSM_STATES = ['welcome', 'support_people', 'strengths', 'worries', 'goals', 'llm_conversation']
+FSM_TRANSITIONS = {
+    'welcome': 'support_people',
+    'support_people': 'strengths', 
+    'strengths': 'worries',
+    'worries': 'goals',
+    'goals': 'llm_conversation'
+}
 
-def get_or_create_fsm(session_id: str) -> dict:
-    """Get existing FSM or create new one for session."""
-    if session_id not in _fsm_cache:
-        # Create new FSM at welcome state
-        _fsm_cache[session_id] = create_fsm(session_id, initial_state='welcome')
-        logger.info(f"Created new FSM for session {session_id}")
-        
-        # TODO: Supabase Migration - Session state restoration
-        # try:
-        #     from config.supabase import supabase
-        #     db_session = supabase.table('sessions').select('fsm_state').eq('session_id', session_id).single().execute()
-        #     if db_session.data:
-        #         _fsm_cache[session_id]['machine'].state = db_session.data['fsm_state']
-        #         logger.info(f"Restored FSM state for {session_id}: {db_session.data['fsm_state']}")
-        #     else:
-        #         supabase.table('sessions').insert({'session_id': session_id, 'fsm_state': 'welcome'}).execute()
-        # except Exception as e:
-        #     logger.warning(f"Could not check database for session {session_id}: {e}")
-        
-        logger.info(f"Session state restoration skipped during migration for {session_id}")
+# In-memory FSM cache
+_fsm_cache = {}  # {f"{user_id}:{session_id}": {'state': str, 'attempts': int}}
+
+def get_fsm_key(user_id: str, session_id: str) -> str:
+    """Create a unique key for FSM cache"""
+    return f"{user_id}:{session_id}"
+
+def get_fsm_state(user_id: str, session_id: str) -> str:
+    """Get current FSM state for user session"""
+    fsm_key = get_fsm_key(user_id, session_id)
     
-    return _fsm_cache[session_id]
-
-# LLM manager initialized above based on LLM_ENABLED
-
-def get_current_state(session_id: str) -> str:
-    """Get current FSM state for a session.
-    
-    Args:
-        session_id: Session identifier
+    if fsm_key not in _fsm_cache:
+        # Try to restore state from database
+        session = get_session(user_id, session_id)
+        if session and session.get('fsm_state'):
+            state = session['fsm_state']
+            logger.info(f"Restored FSM state for {session_id}: {state}")
+        else:
+            state = 'welcome'
+            logger.info(f"Created new FSM for session {session_id}")
         
-    Returns:
-        Current FSM state or 'unknown' if session doesn't exist
-    """
-    if session_id in _fsm_cache:
-        return get_state(_fsm_cache[session_id])
-    return 'unknown'
+        _fsm_cache[fsm_key] = {'state': state, 'attempts': 0}
+    
+    return _fsm_cache[fsm_key]['state']
 
+def set_fsm_state(user_id: str, session_id: str, new_state: str):
+    """Set FSM state for user session"""
+    fsm_key = get_fsm_key(user_id, session_id)
+    _fsm_cache[fsm_key] = {'state': new_state, 'attempts': 0}
+
+def get_fsm_attempts(user_id: str, session_id: str) -> int:
+    """Get attempt count for current state"""
+    fsm_key = get_fsm_key(user_id, session_id)
+    return _fsm_cache.get(fsm_key, {}).get('attempts', 0)
+
+def increment_fsm_attempts(user_id: str, session_id: str):
+    """Increment attempt count"""
+    fsm_key = get_fsm_key(user_id, session_id)
+    if fsm_key in _fsm_cache:
+        _fsm_cache[fsm_key]['attempts'] += 1
+
+def reset_fsm_attempts(user_id: str, session_id: str):
+    """Reset attempt count"""
+    fsm_key = get_fsm_key(user_id, session_id)
+    if fsm_key in _fsm_cache:
+        _fsm_cache[fsm_key]['attempts'] = 0
+
+def can_advance_fsm(current_state: str) -> bool:
+    """Check if FSM can advance from current state"""
+    return current_state in FSM_TRANSITIONS
+
+def advance_fsm_state(user_id: str, session_id: str) -> bool:
+    """Advance FSM to next state"""
+    current_state = get_fsm_state(user_id, session_id)
+    
+    if can_advance_fsm(current_state):
+        new_state = FSM_TRANSITIONS[current_state]
+        set_fsm_state(user_id, session_id, new_state)
+        return True
+    
+    return False
+
+def should_force_advance(user_id: str, session_id: str, max_attempts: int = 2) -> bool:
+    """Check if should force advance after max attempts"""
+    return get_fsm_attempts(user_id, session_id) >= max_attempts
 
 # --- Main Router Function ---
-def route_message(session_id: str, message: str) -> tuple[str, dict]:
-    """
-    Main routing function. Processes a user message and returns a response and debug info.
-    This function orchestrates the entire response generation pipeline.
-    """
+def route_message(user_id: str, session_id: str, message: str) -> str:
+    """Main routing function for user-scoped message processing"""
     start_time = time.time()
-    debug_info = {
-        'risk_detected': False,
-        'fsm_state_before': 'unknown',
-        'fsm_state_after': 'unknown',
-        'response_source': 'unhandled',
-        'errors': []
-    }
-
-    try:
-        # --- Step 1: Persist User Message & Normalize ---
-        # TODO: Supabase Migration - Simple single-line call instead of transaction management
-        save_message(session_id, 'user', message)
-        normalized_message = normalize_text(message)
-        debug_info['normalized_message'] = normalized_message
-
-        # --- Step 2: Universal Risk Detection (Highest Priority) ---
-        if contains_risk(normalized_message):
-            logger.warning(f"Risk detected in session {session_id}.")
-            reply = get_crisis_resources()
-            debug_info.update({'risk_detected': True, 'response_source': 'crisis_resources'})
-            # TODO: Supabase Migration - Analytics events will be much simpler with built-in dashboards
-            save_analytics_event('risk_triggered', {'session_id': session_id})
-            save_message(session_id, 'bot', json.dumps({'type': 'crisis_resources', 'content': reply}))
-            return reply, debug_info
-
-        # --- Step 3: Get or Create FSM ---
-        # Update session activity tracking
-        touch_session(session_id)
+    
+    # Normalize message
+    normalized_message = normalize_text(message)
+    logger.debug(f"Processing message for user {user_id}, session {session_id}")
+    
+    # Universal risk detection (highest priority)
+    if contains_risk(normalized_message):
+        logger.warning(f"Risk detected in session {session_id} for user {user_id}")
+        reply = get_crisis_resources()
         
-        # Get FSM (creates if doesn't exist)
-        fsm_data = get_or_create_fsm(session_id)
-        debug_info['fsm_state_before'] = get_state(fsm_data)
-
-        # --- Step 4: State-Dependent Logic Branching ---
-        # This is the core architectural improvement: separate FSM logic from LLM logic.
+        # Record risk detection
+        record_risk_detection(
+            user_id=user_id,
+            session_id=session_id,
+            message_id=None,
+            label='risk',
+            method='rule_based'
+        )
         
-        if get_state(fsm_data) in ['llm_conversation']:
-            # --- Branch A: LLM-Driven Conversation ---
-            reply = _handle_llm_conversation(session_id, fsm_data, message, debug_info)
-        else:
-            # --- Branch B: FSM-Driven Conversation ---
-            reply = _handle_fsm_conversation(session_id, fsm_data, message, debug_info)
-
-        # --- Step 5: Finalization ---
-        debug_info['fsm_state_after'] = get_state(fsm_data)
-        save_message(session_id, 'bot', reply)
-
-    except Exception as e:
-        logger.error(f"Unhandled error in router for session {session_id}: {e}", exc_info=True)
-        debug_info['errors'].append(f"router_fatal_error: {str(e)}")
-        reply = response_selector.get_response('fallback', 'general', session_id)
-
-    debug_info['processing_time_ms'] = int((time.time() - start_time) * 1000)
-    return reply, debug_info
-
-
-# --- Logic Handlers for Each Branch ---
-
-def _handle_fsm_conversation(session_id: str, fsm_data: dict, message: str, debug_info: dict) -> str:
-    """Handles all logic for the structured, FSM-driven part of the chat."""
+        return reply
     
-    # Get the current state before any transitions
-    current_state = get_state(fsm_data)
+    # Get current FSM state
+    current_state = get_fsm_state(user_id, session_id)
     
-    # Run expensive NLP models only when needed for FSM logic.
-    try:
-        intent_result = classify_intent(message, current_step=get_state(fsm_data))
-        sentiment_result = analyze_sentiment(message)
-        debug_info['intent_classification'] = intent_result
-        debug_info['user_sentiment'] = sentiment_result
-    except Exception as e:
-        logger.error(f"NLP processing failed in FSM state {get_state(fsm_data)}: {e}", exc_info=True)
-        debug_info['errors'].append("nlp_pipeline_error")
-        # Provide a safe fallback if NLP fails
-        return response_selector.get_response('fallback', 'clarification', session_id)
-
-    # Delegate to the appropriate state handler function
-    state_handlers = {
-        'welcome': _handle_welcome_state,
-        'support_people': _handle_support_people_state,
-        'strengths': _handle_strengths_state,
-        'worries': _handle_worries_state,
-        'goals': _handle_goals_state,
-    }
-    handler = state_handlers.get(get_state(fsm_data), _handle_fallback_state)
-    response = handler(session_id, fsm_data, message, intent_result, sentiment_result, debug_info)
+    # Handle different conversation types
+    if current_state == 'llm_conversation':
+        reply = handle_llm_conversation(user_id, session_id, message)
+    else:
+        reply = handle_fsm_conversation(user_id, session_id, message, current_state)
     
-    # If state changed, persist to database
-    new_state = get_state(fsm_data)
+    # Update session state if changed
+    new_state = get_fsm_state(user_id, session_id)
     if new_state != current_state:
-        # TODO: Supabase Migration - State updates will be atomic and faster
-        update_session_state(session_id, new_state)
+        update_session_state(user_id, session_id, fsm_state=new_state)
         logger.debug(f"Session {session_id} advanced: {current_state} -> {new_state}")
-        debug_info['state_transition'] = f"{current_state} -> {new_state}"
     
-    return response
-
-
-def _handle_llm_conversation(session_id: str, fsm_data: dict, message: str, debug_info: dict) -> str:
-    """Handles all logic for the free-form, LLM-driven part of the chat."""
-    debug_info['response_source'] = 'llm_handoff_ongoing'
-
-    # Log an analytics event for every single turn in the LLM phase.
-    # TODO: Supabase Migration - Real-time analytics will be available through dashboard
-    save_analytics_event('llm_turn_completed', {'session_id': session_id})
+    processing_time = int((time.time() - start_time) * 1000)
+    logger.debug(f"Message processed in {processing_time}ms")
     
-    if not LLM_ENABLED:
-        debug_info['errors'].append("llm_not_available")
-        return "I'm not able to continue our conversation right now. Please try again later."
-
-    try:
-        # TODO: Fetch full conversation data here and pass to handoff_manager
-        # Updated handoff_manager now takes FULL conversation including current message
-        # New signature: llm_handoff.handle_llm_response(full_conversation)
-        # where full_conversation = [{"role": "user", "message": "..."}, {"role": "bot", "message": "..."}, ...]
-        # Router should query database for ALL messages in session including the current one
-        # No more splitting into conversation_history + current_message
-        # No more FSM context extraction (redundant - already in conversation)
-        
-        # TEMPORARY: Keep old signature until database logic is implemented here
-        # reply = handle_llm_response(full_conversation)
-        reply = "LLM handoff not yet implemented with new architecture"
-    except Exception as e:
-        logger.error(f"LLM handoff failed for session {session_id}: {e}", exc_info=True)
-        debug_info['errors'].append(f"llm_error: {type(e).__name__}")
-        reply = response_selector.get_response('fallback', 'general', session_id)
-
     return reply
 
+# --- Conversation Handlers ---
+def handle_fsm_conversation(user_id: str, session_id: str, message: str, current_state: str) -> str:
+    """Handle structured FSM-driven conversation"""
+    
+    # Run NLP analysis
+    intent_result = classify_intent(message, current_step=current_state)
+    sentiment_result = analyze_sentiment(message)
+    
+    # Record intent classification
+    record_intent_classification(
+        user_id=user_id,
+        session_id=session_id,
+        message_id=None,
+        label=intent_result.get('label', 'unclear'),
+        confidence=intent_result.get('confidence'),
+        method=intent_result.get('method', 'roberta_zeroshot')
+    )
+    
+    # Route to appropriate state handler
+    state_handlers = {
+        'welcome': handle_welcome_state,
+        'support_people': handle_support_people_state,
+        'strengths': handle_strengths_state,
+        'worries': handle_worries_state,
+        'goals': handle_goals_state,
+    }
+    
+    handler = state_handlers.get(current_state, handle_fallback_state)
+    return handler(user_id, session_id, message, intent_result, sentiment_result)
+
+def handle_llm_conversation(user_id: str, session_id: str, message: str) -> str:
+    """Handle free-form LLM-driven conversation"""
+    if not LLM_ENABLED:
+        return "I'm not able to continue our conversation right now. Please try again later."
+    
+    # TODO: Implement LLM conversation logic
+    logger.info(f"LLM conversation for user {user_id}, session {session_id}")
+    return "LLM conversation mode - this would be implemented with your existing LLM system."
 
 # --- Individual FSM State Handlers ---
-
-def _handle_welcome_state(session_id, fsm_data, message, intent_result, sentiment_result, debug_info):
-    """Handle the welcome state - entry point of conversation"""
-    intent, confidence, user_sentiment = intent_result['label'], intent_result.get('confidence', 0.0), sentiment_result['label']
+def handle_welcome_state(user_id: str, session_id: str, message: str, intent_result: dict, sentiment_result: dict) -> str:
+    """Handle the welcome state"""
+    user_sentiment = sentiment_result.get('label', 'neutral')
     
-    # Log intent classification for debugging
-    debug_info['intent_classification'] = {'intent': intent, 'confidence': confidence}
-    
-    if len(message.strip()) > 3:  # Any substantial response moves the conversation forward
-        if can_advance(fsm_data):
-            advance_state(fsm_data)
-            update_session_state(session_id, get_state(fsm_data))
-            debug_info['response_source'] = 'welcome_advance'
+    if len(message.strip()) > 3:  # Any substantial response moves forward
+        if advance_fsm_state(user_id, session_id):
             return response_selector.get_response('welcome', 'ready_response', session_id, user_sentiment)
         else:
             logger.error(f"Cannot advance from welcome state for session {session_id}")
             return response_selector.get_response('welcome', 'greeting', session_id, user_sentiment)
     else:
-        debug_info['response_source'] = 'welcome_greeting'
         return response_selector.get_response('welcome', 'greeting', session_id, user_sentiment)
 
-
-def _handle_support_people_state(session_id, fsm_data, message, intent_result, sentiment_result, debug_info):
+def handle_support_people_state(user_id: str, session_id: str, message: str, intent_result: dict, sentiment_result: dict) -> str:
     """Handle the support_people state with progressive fallback"""
-    intent, user_sentiment = intent_result['label'], sentiment_result['label']
-
-    # Check if intent is clear (not unclear)
+    intent = intent_result.get('label', 'unclear')
+    user_sentiment = sentiment_result.get('label', 'neutral')
+    
     if intent != 'unclear':
         # Clear response - save and advance
-        save_response(fsm_data(message)
-        reset_attempts(fsm_data)
+        reset_fsm_attempts(user_id, session_id)
         
-        if can_advance(fsm_data):
-            advance_state(fsm_data)
-            update_session_state(session_id, get_state(fsm_data))
-            debug_info['response_source'] = 'support_people_advance'
+        if advance_fsm_state(user_id, session_id):
             ack = response_selector.get_response('support_people', 'acknowledgment', session_id, user_sentiment)
             prompt = response_selector.get_prompt('strengths', session_id=session_id)
             return f"{ack} {prompt}"
         else:
-            logger.error(f"Cannot advance from support_people state for session {session_id}")
             return response_selector.get_response('support_people', 'acknowledgment', session_id, user_sentiment)
     else:
         # Unclear response - use progressive fallback
-        increment_attempt(fsm_data)
-        debug_info['attempt_count'] = get_attempt_count(fsm_data)
+        increment_fsm_attempts(user_id, session_id)
         
-        if should_force_advance(fsm_data):
-            # After 2 attempts, save unclear response and move forward
-            save_response(fsm_data(f"Unclear: {message}")
-            reset_attempts(fsm_data)
+        if should_force_advance(user_id, session_id):
+            # After max attempts, move forward anyway
+            reset_fsm_attempts(user_id, session_id)
             
-            if can_advance(fsm_data):
-                advance_state(fsm_data)
-                update_session_state(session_id, get_state(fsm_data))
-                debug_info['response_source'] = 'support_people_force_advance'
+            if advance_fsm_state(user_id, session_id):
                 trans = response_selector.get_response('support_people', 'transition_unclear', session_id)
                 prompt = response_selector.get_prompt('strengths', session_id=session_id)
                 return f"{trans} {prompt}"
@@ -301,151 +250,97 @@ def _handle_support_people_state(session_id, fsm_data, message, intent_result, s
                 return response_selector.get_response('support_people', 'transition_unclear', session_id)
         else:
             # First attempt - ask for clarification
-            debug_info['response_source'] = 'support_people_clarify'
             return response_selector.get_response('support_people', 'clarify', session_id)
 
-
-def _handle_strengths_state(session_id, fsm_data, message, intent_result, sentiment_result, debug_info):
+def handle_strengths_state(user_id: str, session_id: str, message: str, intent_result: dict, sentiment_result: dict) -> str:
     """Handle the strengths state with progressive fallback"""
-    intent, user_sentiment = intent_result['label'], sentiment_result['label']
+    intent = intent_result.get('label', 'unclear')
+    user_sentiment = sentiment_result.get('label', 'neutral')
     
     if intent != 'unclear':
-        # Good response - save and advance
-        save_response(fsm_data(message)
-        reset_attempts(fsm_data)
+        reset_fsm_attempts(user_id, session_id)
         
-        if can_advance(fsm_data):
-            advance_state(fsm_data)
-            update_session_state(session_id, get_state(fsm_data))
-            debug_info['response_source'] = 'strengths_advance'
+        if advance_fsm_state(user_id, session_id):
             ack = response_selector.get_response('strengths', 'acknowledgment', session_id, user_sentiment)
             prompt = response_selector.get_prompt('worries', session_id=session_id)
             return f"{ack} {prompt}"
         else:
-            logger.error(f"Cannot advance from strengths state for session {session_id}")
             return response_selector.get_response('strengths', 'acknowledgment', session_id, user_sentiment)
     else:
-        # Unclear response - use progressive fallback
-        increment_attempt(fsm_data)
-        debug_info['attempt_count'] = get_attempt_count(fsm_data)
+        increment_fsm_attempts(user_id, session_id)
         
-        if should_force_advance(fsm_data):
-            # After 2 attempts, save unclear response and move forward
-            save_response(fsm_data(f"Unclear: {message}")
-            reset_attempts(fsm_data)
+        if should_force_advance(user_id, session_id):
+            reset_fsm_attempts(user_id, session_id)
             
-            if can_advance(fsm_data):
-                advance_state(fsm_data)
-                update_session_state(session_id, get_state(fsm_data))
-                debug_info['response_source'] = 'strengths_force_advance'
+            if advance_fsm_state(user_id, session_id):
                 trans = response_selector.get_response('strengths', 'transition_advance', session_id)
                 prompt = response_selector.get_prompt('worries', session_id=session_id)
                 return f"{trans} {prompt}"
             else:
                 return response_selector.get_response('strengths', 'transition_advance', session_id)
         else:
-            # First attempt - encourage response
-            debug_info['response_source'] = 'strengths_clarify'
             return response_selector.get_response('strengths', 'clarify', session_id)
 
-
-def _handle_worries_state(session_id, fsm_data, message, intent_result, sentiment_result, debug_info):
+def handle_worries_state(user_id: str, session_id: str, message: str, intent_result: dict, sentiment_result: dict) -> str:
     """Handle the worries state with progressive fallback"""
-    intent, user_sentiment = intent_result['label'], sentiment_result['label']
+    intent = intent_result.get('label', 'unclear')
+    user_sentiment = sentiment_result.get('label', 'neutral')
     
     if intent != 'unclear':
-        # Good response - save and advance
-        save_response(fsm_data(message)
-        reset_attempts(fsm_data)
+        reset_fsm_attempts(user_id, session_id)
         
-        if can_advance(fsm_data):
-            advance_state(fsm_data)
-            update_session_state(session_id, get_state(fsm_data))
-            debug_info['response_source'] = 'worries_advance'
+        if advance_fsm_state(user_id, session_id):
             ack = response_selector.get_response('worries', 'acknowledgment', session_id, user_sentiment)
             prompt = response_selector.get_prompt('goals', session_id=session_id)
             return f"{ack} {prompt}"
         else:
-            logger.error(f"Cannot advance from worries state for session {session_id}")
             return response_selector.get_response('worries', 'acknowledgment', session_id, user_sentiment)
     else:
-        # Unclear response - use progressive fallback
-        increment_attempt(fsm_data)
-        debug_info['attempt_count'] = get_attempt_count(fsm_data)
+        increment_fsm_attempts(user_id, session_id)
         
-        if should_force_advance(fsm_data):
-            # After 2 attempts, save unclear response and move forward
-            save_response(fsm_data(f"Unclear: {message}")
-            reset_attempts(fsm_data)
+        if should_force_advance(user_id, session_id):
+            reset_fsm_attempts(user_id, session_id)
             
-            if can_advance(fsm_data):
-                advance_state(fsm_data)
-                update_session_state(session_id, get_state(fsm_data))
-                debug_info['response_source'] = 'worries_force_advance'
+            if advance_fsm_state(user_id, session_id):
                 trans = response_selector.get_response('worries', 'transition_advance', session_id)
                 prompt = response_selector.get_prompt('goals', session_id=session_id)
                 return f"{trans} {prompt}"
             else:
                 return response_selector.get_response('worries', 'transition_advance', session_id)
         else:
-            # First attempt - ask for clarification
-            debug_info['response_source'] = 'worries_clarify'
             return response_selector.get_response('worries', 'clarify', session_id)
 
-
-def _handle_goals_state(session_id, fsm_data, message, intent_result, sentiment_result, debug_info):
+def handle_goals_state(user_id: str, session_id: str, message: str, intent_result: dict, sentiment_result: dict) -> str:
     """Handle the goals state - last step before LLM handoff"""
-    intent, user_sentiment = intent_result['label'], sentiment_result['label']
+    intent = intent_result.get('label', 'unclear')
+    user_sentiment = sentiment_result.get('label', 'neutral')
     
     if intent != 'unclear':
-        # Good response - save and advance to LLM handoff
-        save_response(fsm_data(message)
-        reset_attempts(fsm_data)
+        reset_fsm_attempts(user_id, session_id)
         
-        if fsm.can_advance():
-            fsm.next_step()  # Move to 'llm_conversation' state
-            update_session_state(session_id, fsm.state)
-            debug_info['response_source'] = 'goals_to_llm_handoff'
-            
-            # Acknowledge and transition to open conversation
+        if advance_fsm_state(user_id, session_id):  # Move to 'llm_conversation' state
             ack = response_selector.get_response('goals', 'acknowledgment', session_id, user_sentiment)
             transition = "Great! Now we can have an open yarn about anything on your mind."
-            
             return f"{ack} {transition}"
         else:
-            logger.error(f"Cannot advance from goals state for session {session_id}")
             return response_selector.get_response('goals', 'acknowledgment', session_id, user_sentiment)
     else:
-        # Unclear response - use progressive fallback
-        increment_attempt(fsm_data)
-        debug_info['attempt_count'] = get_attempt_count(fsm_data)
+        increment_fsm_attempts(user_id, session_id)
         
-        if should_force_advance(fsm_data):
-            # After 2 attempts, save unclear response and move to LLM handoff
-            save_response(fsm_data(f"Unclear: {message}")
-            reset_attempts(fsm_data)
+        if should_force_advance(user_id, session_id):
+            reset_fsm_attempts(user_id, session_id)
             
-            if fsm.can_advance():
-                fsm.next_step()  # Move to 'llm_conversation' state
-                update_session_state(session_id, fsm.state)
-                debug_info['response_source'] = 'goals_force_to_llm_handoff'
-                
+            if advance_fsm_state(user_id, session_id):  # Move to 'llm_conversation' state
                 trans = response_selector.get_response('goals', 'transition_advance', session_id)
                 transition = "No worries! Let's move on and have a yarn about anything that's on your mind."
-                
                 return f"{trans} {transition}"
             else:
                 return response_selector.get_response('goals', 'transition_advance', session_id)
         else:
-            # First attempt - ask for clarification
-            debug_info['response_source'] = 'goals_clarify'
             return response_selector.get_response('goals', 'clarify', session_id)
 
-
-def _handle_fallback_state(session_id, fsm_data, *args):
-    """Handles any unexpected FSM state."""
-    logger.error(f"Router entered unexpected FSM state: {get_state(fsm_data)} for session {session_id}")
-    logger.debug(f"Fallback handler received args: {args}")
+def handle_fallback_state(user_id: str, session_id: str, message: str, *args) -> str:
+    """Handle unexpected FSM state"""
+    current_state = get_fsm_state(user_id, session_id)
+    logger.error(f"Router entered unexpected FSM state: {current_state} for session {session_id}")
     return response_selector.get_response('fallback', 'general', session_id)
-
-

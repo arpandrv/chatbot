@@ -50,3 +50,6 @@ Thumbs.db
 
 # AI models folder
 aimhi-chatbot/ai_models/
+# Local scripts (do not commit)
+/scripts/
+AGENTS.md
