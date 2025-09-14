@@ -12,7 +12,7 @@ HF_RISK_API_URL = os.getenv(
     "HF_RISK_API_URL",
     "https://router.huggingface.co/hf-inference/models/sentinet/suicidality",
 )
-CONFIDENCE_THRESHOLD = float(os.getenv("HF_CONFIDENCE_THRESHOLD", 0.5))
+CONFIDENCE_THRESHOLD = float(os.getenv("RISK_CONFIDENCE_THRESHOLD", 0.5))
 
 
 def _normalize_risk_label(label: str) -> str:

@@ -18,6 +18,8 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <meta name="supabase-url" content="{{ supabase_url }}">
+  <meta name="supabase-key" content="{{ supabase_anon_key }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <style>
@@ -42,6 +44,7 @@
           </div>
         </div>
         <div class="flex items-center gap-2">
+          <span id="envChip" class="hidden sm:inline px-2 py-1 rounded-full bg-white/10 ring-1 ring-white/30 text-white env-chip">API: -</span>
           <button class="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 ring-1 ring-white/30 text-white flex items-center gap-2" onclick="window.UI.openHistory()"><i class="bi bi-clock-history"></i><span class="hidden sm:inline">History</span></button>
           <button class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 ring-1 ring-white/30 text-white flex items-center gap-2" onclick="window.UI.showHelp()"><i class="bi bi-life-preserver"></i><span class="hidden sm:inline">Get Help</span></button>
           <div id="userDisplay" class="hidden px-3 py-2 rounded-full bg-white/10 ring-1 ring-white/30 text-white text-sm">Signed in as <span id="userFirstName"></span></div>

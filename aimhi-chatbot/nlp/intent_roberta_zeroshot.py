@@ -19,10 +19,10 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # --- Configuration ---
-THRESHOLD = float(os.getenv("ROBERTA_INTENT_THRESHOLD", "0.3"))
+INTENT_CONFIDENCE_THRESHOLD = float(os.getenv("INTENT_CONFIDENCE_THRESHOLD", "0.5"))
 HF_TOKEN = os.getenv("HF_TOKEN")
-HF_ZS_API_URL = os.getenv(
-    "HF_ZS_API_URL",
+HF_INTENT_API_URL = os.getenv(
+    "HF_INTENT_API_URL",
     "https://router.huggingface.co/hf-inference/models/facebook/bart-large-mnli",
 )
 
@@ -69,7 +69,7 @@ def _zero_shot_request(text: str, candidate_labels: List[str]) -> Any:
             "multi_label": False,
         },
     }
-    resp = requests.post(HF_ZS_API_URL, headers=_headers(), json=payload)
+    resp = requests.post(HF_INTENT_API_URL, headers=_headers(), json=payload)
     resp.raise_for_status()
     return resp.json()
 
@@ -91,7 +91,7 @@ def _parse_zero_shot_response(result: Any) -> Tuple[str, float]:
     return "unclear", 0.0
 
 
-def classify_intent(text: str, threshold: float = THRESHOLD) -> Dict[str, Any]:
+def classify_intent(text: str, threshold: float = INTENT_CONFIDENCE_THRESHOLD) -> Dict[str, Any]:
     if not text or not text.strip():
         return {"label": "unclear", "confidence": 0.0, "method": "empty_input"}
 

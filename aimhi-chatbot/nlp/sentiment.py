@@ -12,6 +12,7 @@ HF_SENTIMENT_API_URL = os.getenv(
     "HF_SENTIMENT_API_URL",
     "https://router.huggingface.co/hf-inference/models/cardiffnlp/twitter-roberta-base-sentiment",
 )
+SENTIMENT_CONFIDENCE_THRESHOLD = float(os.getenv("SENTIMENT_CONFIDENCE_THRESHOLD", 0.5))
 
 
 def _normalize_sentiment_label(label: str) -> str:
@@ -51,6 +52,17 @@ def analyze_sentiment(text: str) -> Dict[str, Any]:
         top = max(result, key=lambda r: float(r.get("score", 0.0)))
         label = _normalize_sentiment_label(str(top.get("label", "neutral")))
         confidence = float(top.get("score", 0.0))
+
+        # Apply threshold: if pos/neg is weak, prefer neutral
+        if label in {"positive", "negative"} and confidence < SENTIMENT_CONFIDENCE_THRESHOLD:
+            adjusted = {
+                "label": "neutral",
+                "confidence": 1.0 - confidence,
+                "method": "hf_text_classification_threshold_adjusted",
+                "below_threshold": True,
+            }
+            return adjusted
+
         return {"label": label, "confidence": confidence, "method": "hf_text_classification"}
 
     except Exception as e:

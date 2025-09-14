@@ -1,19 +1,22 @@
 """
-Simplified User-Scoped Message Router
-====================================
-Reduced try/except blocks and converted FSM class to simple functions.
+User-Scoped Message Router
+==========================
+- Structured FSM upfront, then seamless LLM conversation.
+- Non-blocking, recorded risk checks.
+- Minimal, defensive imports to keep server resilient.
 """
 
-import json
 import logging
 import time
-import os
-from typing import Dict, List, Optional, Any
+from typing import Dict, Any
 
 # --- Core Application Imports ---
 from database.repository import (
-    get_session, update_session_state, record_risk_detection,
-    record_intent_classification
+    get_session,
+    update_session_state,
+    record_risk_detection,
+    record_intent_classification,
+    get_chat_history,
 )
 
 
@@ -72,10 +75,8 @@ def _detect_risk_flag(text: str) -> Dict[str, Any]:
 # --- Configuration ---
 logger = logging.getLogger(__name__)
 response_selector = VariedResponseSelector()
-LLM_ENABLED = os.getenv('LLM_ENABLED', 'false').lower() == 'true'
 
 # --- FSM Functions (converted from class) ---
-FSM_STATES = ['welcome', 'support_people', 'strengths', 'worries', 'goals', 'llm_conversation']
 FSM_TRANSITIONS = {
     'welcome': 'support_people',
     'support_people': 'strengths', 
@@ -180,17 +181,19 @@ def route_message(user_id: str, session_id: str, message: str) -> Dict[str, Any]
                 details=details,
             )
         except Exception as e:
-            logger.error(f"Failed to record risk detection: {e}
-")
+            logger.error(f"Failed to record risk detection: {e}")
     
     # Get current FSM state
     current_state = get_fsm_state(user_id, session_id)
     
     # Handle different conversation types
     if current_state == 'llm_conversation':
+        # Always delegate to LLM once in free-form mode
         reply = handle_llm_conversation(user_id, session_id, message)
+        response_source = 'llm'
     else:
         reply = handle_fsm_conversation(user_id, session_id, message, current_state)
+        response_source = 'fsm'
     
     # Update session state if changed
     new_state = get_fsm_state(user_id, session_id)
@@ -205,7 +208,7 @@ def route_message(user_id: str, session_id: str, message: str) -> Dict[str, Any]
         'reply': reply,
         'debug': {
             'fsm_state': new_state,
-            'response_source': 'fsm' if new_state != 'llm_conversation' else 'llm',
+            'response_source': response_source,
             'risk_detected': risk_detected,
             'processing_ms': processing_time,
         }
@@ -216,23 +219,21 @@ def handle_fsm_conversation(user_id: str, session_id: str, message: str, current
     """Handle structured FSM-driven conversation"""
     
     # Run NLP analysis
-    # Keep call signature compatible with classifier
-    try:
-        intent_result = classify_intent(message)
-    except TypeError:
-        # Some implementations may accept current_step keyword
-        intent_result = classify_intent(message)
+    intent_result = classify_intent(message)
     sentiment_result = analyze_sentiment(message)
     
-    # Record intent classification
-    record_intent_classification(
-        user_id=user_id,
-        session_id=session_id,
-        message_id=None,
-        label=intent_result.get('label', 'unclear'),
-        confidence=intent_result.get('confidence'),
-        method=intent_result.get('method', 'roberta_zeroshot')
-    )
+    # Record intent classification (best effort)
+    try:
+        record_intent_classification(
+            user_id=user_id,
+            session_id=session_id,
+            message_id=None,
+            label=intent_result.get('label', 'unclear'),
+            confidence=intent_result.get('confidence'),
+            method=intent_result.get('method', 'roberta_zeroshot')
+        )
+    except Exception as e:
+        logger.warning(f"Failed to record intent classification: {e}")
     
     # Route to appropriate state handler
     state_handlers = {
@@ -247,13 +248,32 @@ def handle_fsm_conversation(user_id: str, session_id: str, message: str, current
     return handler(user_id, session_id, message, intent_result, sentiment_result)
 
 def handle_llm_conversation(user_id: str, session_id: str, message: str) -> str:
-    """Handle free-form LLM-driven conversation"""
-    if not LLM_ENABLED:
-        return "I'm not able to continue our conversation right now. Please try again later."
-    
-    # TODO: Implement LLM conversation logic
-    logger.info(f"LLM conversation for user {user_id}, session {session_id}")
-    return "LLM conversation mode - this would be implemented with your existing LLM system."
+    """Handle free-form LLM-driven conversation via handoff manager.
+
+    Uses full chat history as context and returns the model's reply.
+    Any errors produce a safe, friendly fallback.
+    """
+    try:
+        # Import lazily to avoid hard failure if env is missing during startup
+        from llm.handoff_manager import handle_llm_response  # type: ignore
+
+        # Fetch recent conversation (includes the current user message saved by the API layer)
+        history = get_chat_history(user_id, session_id, limit=100) or []
+        # Adapt to handoff format: [{ role: 'user'|'bot', message: str }, ...]
+        full_conversation = [
+            {"role": item.get("role", "user"), "message": item.get("message", "")}
+            for item in history
+            if item.get("message")
+        ]
+
+        reply = handle_llm_response(full_conversation)
+        return reply or "I'm here and listening. Tell me more."
+    except Exception as e:
+        logger.error(f"LLM handoff failed for session {session_id}: {e}")
+        return (
+            "I had trouble generating a response just now, but I'm here to listen. "
+            "Could you share a bit more about that?"
+        )
 
 # --- Individual FSM State Handlers ---
 def handle_welcome_state(user_id: str, session_id: str, message: str, intent_result: dict, sentiment_result: dict) -> str:

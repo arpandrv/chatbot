@@ -118,8 +118,16 @@
   let supabase = null;
   const initSupabase = () => {
     try {
+      // Prefer explicit global config if available
       if (window.SUPABASE?.url && window.SUPABASE?.key && window.supabase) {
         supabase = window.supabase.createClient(window.SUPABASE.url, window.SUPABASE.key);
+        return;
+      }
+      // Fallback: read from meta tags (works with strict CSP)
+      const urlEl = document.querySelector('meta[name="supabase-url"]');
+      const keyEl = document.querySelector('meta[name="supabase-key"]');
+      if (urlEl && keyEl && window.supabase) {
+        supabase = window.supabase.createClient(urlEl.content, keyEl.content);
       }
     } catch {}
   };
@@ -233,9 +241,12 @@
     sessionId = localStorage.getItem('session_id');
 
     // Health check and environment chip
-    try {
-      const h = await API.health(); qs('#envChip').textContent = `API: ${API.base} (${h.status||'?'})`;
-    } catch { qs('#envChip').textContent = `API: ${API.base} (offline)`; }
+    const envEl = qs('#envChip');
+    if (envEl) {
+      try {
+        const h = await API.health(); envEl.textContent = `API: ${API.base} (${h.status||'?'})`;
+      } catch { envEl.textContent = `API: ${API.base} (offline)`; }
+    }
 
     if (localStorage.getItem('token')) {
       qs('#authBtnText').textContent = 'Signed in';

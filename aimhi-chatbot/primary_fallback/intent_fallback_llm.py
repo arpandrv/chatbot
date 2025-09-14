@@ -23,14 +23,14 @@ logger = logging.getLogger(__name__)
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
 API_KEY = os.getenv("LLM_API_KEY", "")
 MODEL = os.getenv("LLM_MODEL", "gpt-4")
-TIMEOUT = float(os.getenv("LLM_TIMEOUT", "3.0"))
-TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
+INTENT_TIMEOUT = float(os.getenv("LLM_TIMEOUT_INTENT", "5.0"))
+INTENT_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE_INTENT", "0.3"))
 MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "100"))
 OPENAI_API_BASE = os.getenv("LLM_API_BASE", "https://api.openai.com/v1")
 OLLAMA_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
 
 # Intent classification system prompt
-SYSTEM_PROMPT = """You are an intent classifier for a mental health support chatbot.
+DEFAULT_INTENT_SYSTEM_PROMPT = """You are an intent classifier for a mental health support chatbot.
 Classify the user's message into exactly ONE of these categories:
 
 - greeting: User is saying hello or starting conversation
@@ -49,6 +49,8 @@ Classify the user's message into exactly ONE of these categories:
 
 Respond with JSON only: {"intent": "category_name"}
 No explanations, just the JSON."""
+
+INTENT_SYSTEM_PROMPT = os.getenv("LLM_SYSTEM_PROMPT_INTENT") or DEFAULT_INTENT_SYSTEM_PROMPT
 
 def get_user_prompt(text: str) -> str:
     """Format user message for LLM."""
@@ -95,10 +97,10 @@ def classify_intent_openai(text: str) -> Dict:
         payload = {
             "model": MODEL,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": INTENT_SYSTEM_PROMPT},
                 {"role": "user", "content": get_user_prompt(text)}
             ],
-            "temperature": TEMPERATURE,
+            "temperature": INTENT_TEMPERATURE,
             "max_tokens": MAX_TOKENS
         }
         
@@ -106,7 +108,7 @@ def classify_intent_openai(text: str) -> Dict:
             f"{OPENAI_API_BASE}/chat/completions",
             headers=headers,
             json=payload,
-            timeout=TIMEOUT
+            timeout=INTENT_TIMEOUT
         )
         response.raise_for_status()
         
@@ -128,19 +130,19 @@ def classify_intent_openai(text: str) -> Dict:
 def classify_intent_ollama(text: str) -> Dict:
     """Classify intent using Ollama local LLM."""
     try:
-        full_prompt = f"{SYSTEM_PROMPT}\n\n{get_user_prompt(text)}"
+        full_prompt = f"{INTENT_SYSTEM_PROMPT}\n\n{get_user_prompt(text)}"
         
         payload = {
             "model": MODEL,
             "prompt": full_prompt,
-            "temperature": TEMPERATURE,
+            "temperature": INTENT_TEMPERATURE,
             "stream": False
         }
         
         response = requests.post(
             f"{OLLAMA_API_BASE}/api/generate",
             json=payload,
-            timeout=TIMEOUT
+            timeout=INTENT_TIMEOUT
         )
         response.raise_for_status()
         

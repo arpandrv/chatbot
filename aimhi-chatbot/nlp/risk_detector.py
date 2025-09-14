@@ -11,15 +11,17 @@ logger = logging.getLogger(__name__)
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()  # "openai" or "ollama"
 API_KEY = os.getenv("LLM_API_KEY", "")
 MODEL = os.getenv("LLM_MODEL", "gpt-4")
-TIMEOUT = float(os.getenv("LLM_TIMEOUT", "2.0"))
-TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
+RISK_TIMEOUT = float(os.getenv("LLM_TIMEOUT_RISK", "2.0"))
+RISK_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE_RISK", "0.1"))
 MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "100"))
 OPENAI_API_BASE = os.getenv("LLM_API_BASE", "https://api.openai.com/v1")
 OLLAMA_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
 
-SYSTEM_PROMPT = os.getenv("LLM_SYSTEM_PROMPT")
-if not SYSTEM_PROMPT:
-    raise RuntimeError("System prompt not specified. Please set the LLM_SYSTEM_PROMPT environment variable.")
+RISK_SYSTEM_PROMPT = os.getenv("LLM_SYSTEM_PROMPT_RISK")
+if not RISK_SYSTEM_PROMPT:
+    raise RuntimeError(
+        "System prompt not specified. Please set the LLM_SYSTEM_PROMPT_RISK environment variable."
+    )
 
 def get_user_prompt(text: str) -> str:
     return f'Message: "{text}"'
@@ -34,17 +36,17 @@ def detect_risk_openai(text: str, timeout: Optional[float] = None) -> Dict:
         payload = {
             "model": MODEL,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": RISK_SYSTEM_PROMPT},
                 {"role": "user", "content": get_user_prompt(text)}
             ],
-            "temperature": TEMPERATURE,
+            "temperature": RISK_TEMPERATURE,
             "max_tokens": MAX_TOKENS
         }
         response = requests.post(
             f"{OPENAI_API_BASE}/chat/completions",
             headers=headers,
             json=payload,
-            timeout=timeout or TIMEOUT
+            timeout=timeout or RISK_TIMEOUT
         )
         response.raise_for_status()
         result = response.json()
@@ -64,17 +66,17 @@ def detect_risk_openai(text: str, timeout: Optional[float] = None) -> Dict:
 
 def detect_risk_ollama(text: str, timeout: Optional[float] = None) -> Dict:
     try:
-        full_prompt = f"{SYSTEM_PROMPT}\n\n{get_user_prompt(text)}"
+        full_prompt = f"{RISK_SYSTEM_PROMPT}\n\n{get_user_prompt(text)}"
         payload = {
             "model": MODEL,
             "prompt": full_prompt,
-            "temperature": TEMPERATURE,
+            "temperature": RISK_TEMPERATURE,
             "stream": False
         }
         response = requests.post(
             f"{OLLAMA_API_BASE}/api/generate",
             json=payload,
-            timeout=timeout or TIMEOUT
+            timeout=timeout or RISK_TIMEOUT
         )
         response.raise_for_status()
         result = response.json()

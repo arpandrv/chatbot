@@ -23,14 +23,14 @@ logger = logging.getLogger(__name__)
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
 API_KEY = os.getenv("LLM_API_KEY", "")
 MODEL = os.getenv("LLM_MODEL", "gpt-4")
-TIMEOUT = float(os.getenv("LLM_TIMEOUT", "3.0"))
-TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
+SENTIMENT_TIMEOUT = float(os.getenv("LLM_TIMEOUT_SENTIMENT", "10.0"))
+SENTIMENT_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE_SENTIMENT", "0.7"))
 MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "100"))
 OPENAI_API_BASE = os.getenv("LLM_API_BASE", "https://api.openai.com/v1")
 OLLAMA_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
 
 # Sentiment analysis system prompt
-SYSTEM_PROMPT = """You are a sentiment analyzer for a mental health support chatbot.
+DEFAULT_SENTIMENT_SYSTEM_PROMPT = """You are a sentiment analyzer for a mental health support chatbot.
 Analyze the emotional tone of the user's message.
 
 Classify the sentiment as exactly ONE of:
@@ -45,6 +45,8 @@ Consider:
 
 Respond with JSON only: {"sentiment": "positive" OR "negative" OR "neutral"}
 No explanations, just the JSON."""
+
+SENTIMENT_SYSTEM_PROMPT = os.getenv("LLM_SYSTEM_PROMPT_SENTIMENT") or DEFAULT_SENTIMENT_SYSTEM_PROMPT
 
 def get_user_prompt(text: str) -> str:
     """Format user message for LLM."""
@@ -86,10 +88,10 @@ def analyze_sentiment_openai(text: str) -> Dict:
         payload = {
             "model": MODEL,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": SENTIMENT_SYSTEM_PROMPT},
                 {"role": "user", "content": get_user_prompt(text)}
             ],
-            "temperature": TEMPERATURE,
+            "temperature": SENTIMENT_TEMPERATURE,
             "max_tokens": MAX_TOKENS
         }
         
@@ -97,7 +99,7 @@ def analyze_sentiment_openai(text: str) -> Dict:
             f"{OPENAI_API_BASE}/chat/completions",
             headers=headers,
             json=payload,
-            timeout=TIMEOUT
+            timeout=SENTIMENT_TIMEOUT
         )
         response.raise_for_status()
         
@@ -119,19 +121,19 @@ def analyze_sentiment_openai(text: str) -> Dict:
 def analyze_sentiment_ollama(text: str) -> Dict:
     """Analyze sentiment using Ollama local LLM."""
     try:
-        full_prompt = f"{SYSTEM_PROMPT}\n\n{get_user_prompt(text)}"
+        full_prompt = f"{SENTIMENT_SYSTEM_PROMPT}\n\n{get_user_prompt(text)}"
         
         payload = {
             "model": MODEL,
             "prompt": full_prompt,
-            "temperature": TEMPERATURE,
+            "temperature": SENTIMENT_TEMPERATURE,
             "stream": False
         }
         
         response = requests.post(
             f"{OLLAMA_API_BASE}/api/generate",
             json=payload,
-            timeout=TIMEOUT
+            timeout=SENTIMENT_TIMEOUT
         )
         response.raise_for_status()
         
