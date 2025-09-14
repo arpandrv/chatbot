@@ -4,24 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Yarn Chat — Experimental Frontend</title>
+  <script src="{{ url_for('static', filename='js/tailwind-config.js') }}"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#2563eb',
-            accent: '#f59e0b',
-          }
-        }
-      }
-    }
-  </script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-  <script>
-    // Optional override: window.APP_CONFIG = { apiBase: 'http://localhost:5000' }
-    window.APP_CONFIG = window.APP_CONFIG || {};
-  </script>
+  <script src="{{ url_for('static', filename='js/config.js') }}"></script>
   <!-- Supabase JS for OAuth (Google) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>

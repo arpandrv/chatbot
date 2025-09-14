@@ -6,6 +6,7 @@ Reduced try/except blocks and simplified error handling.
 
 import jwt
 import logging
+import os
 from functools import wraps
 from flask import request, jsonify, g
 from typing import Optional
@@ -28,16 +29,38 @@ def extract_user_from_token() -> Optional[str]:
     
     token = auth_header.split(' ')[1]
     
-    if not JWT_SECRET:
-        raise Exception("JWT secret not configured")
-    # Decode JWT token (issuer varies per project URL; don't enforce issuer)
-    decoded = jwt.decode(
-        token,
-        JWT_SECRET,
-        algorithms=['HS256'],
-        audience='authenticated',
-        options={"verify_iss": False}
-    )
+    dev_mode = os.getenv('FLASK_ENV', 'production') != 'production'
+    decoded = None
+    # Prefer verified decode when secret is available
+    if JWT_SECRET:
+        try:
+            decoded = jwt.decode(
+                token,
+                JWT_SECRET,
+                algorithms=['HS256'],
+                audience='authenticated',
+                options={"verify_iss": False}
+            )
+        except Exception as e:
+            # In development, allow unverified decode to avoid local setup blockers
+            if dev_mode:
+                logger.warning(f"JWT verify failed in dev, using unverified decode: {e}")
+                decoded = jwt.decode(token, options={
+                    'verify_signature': False,
+                    'verify_aud': False,
+                    'verify_iss': False
+                })
+            else:
+                raise
+    else:
+        if dev_mode:
+            decoded = jwt.decode(token, options={
+                'verify_signature': False,
+                'verify_aud': False,
+                'verify_iss': False
+            })
+        else:
+            raise Exception("JWT secret not configured")
     
     user_id = decoded.get('sub')
     if not user_id:

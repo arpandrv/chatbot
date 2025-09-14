@@ -285,15 +285,28 @@ def add_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    
-    csp = (
-        "default-src 'self'; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "script-src 'self' https://cdn.jsdelivr.net; "
-        "img-src 'self' data:; "
-        "connect-src 'self' https://*.supabase.co; "
-        "frame-ancestors 'none';"
-    )
+
+    # Relax CSP in development to allow inline config and CDNs
+    if not IS_PROD:
+        csp = (
+            "default-src 'self'; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.tailwindcss.com; "
+            "img-src 'self' data: https://www.gstatic.com; "
+            "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; "
+            "connect-src 'self' https://*.supabase.co; "
+            "frame-ancestors 'none';"
+        )
+    else:
+        csp = (
+            "default-src 'self'; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "script-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com; "
+            "img-src 'self' data: https://www.gstatic.com; "
+            "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; "
+            "connect-src 'self' https://*.supabase.co; "
+            "frame-ancestors 'none';"
+        )
     response.headers["Content-Security-Policy"] = csp
     return response
 

@@ -1,6 +1,6 @@
 // Lightweight API client inspired by Vercel example patterns
 (function(){
-  const DEFAULT_BASE = window.APP_CONFIG.apiBase || localStorage.getItem('apiBase') || 'http://localhost:5000';
+  const DEFAULT_BASE = (window.APP_CONFIG && window.APP_CONFIG.apiBase) || localStorage.getItem('apiBase') || window.location.origin;
   let TOKEN = localStorage.getItem('token') || '';
 
   const withTimeout = (promise, ms) => {
