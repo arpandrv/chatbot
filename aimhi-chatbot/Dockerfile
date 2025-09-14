@@ -13,12 +13,12 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     build-essential ca-certificates curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy and install requirements
-COPY requirements.txt ./
+# Copy and install requirements (monorepo-safe)
+COPY aimhi-chatbot/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
-COPY . .
+# Copy app code (only the subdirectory)
+COPY aimhi-chatbot/ .
 
 # Expose port
 EXPOSE 5000
