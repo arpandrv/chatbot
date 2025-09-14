@@ -248,16 +248,36 @@ def index():
         supabase_anon_key=os.getenv('SUPABASE_ANON_KEY', '')
     )
 
+import time
+HEALTH_TTL_SECONDS = int(os.getenv("HEALTH_TTL_SECONDS", "60"))
+_HEALTH_LAST_TS = 0.0
+_HEALTH_LAST_PAYLOAD = None
+_HEALTH_LAST_STATUS = 503
+
+@app.route("/healthz")
+def healthz():
+    """Shallow health: does not hit Supabase; safe for frequent platform checks."""
+    return jsonify({"status": "ok"}), 200
+
 @app.route("/health")
 def health_check():
-    """Health check endpoint"""
+    """Deep health: includes Supabase connectivity with simple caching to limit calls."""
+    global _HEALTH_LAST_TS, _HEALTH_LAST_PAYLOAD, _HEALTH_LAST_STATUS
+    now = time.time()
+    if _HEALTH_LAST_PAYLOAD and (now - _HEALTH_LAST_TS) < HEALTH_TTL_SECONDS:
+        return jsonify(_HEALTH_LAST_PAYLOAD), _HEALTH_LAST_STATUS
+
     db_connected = test_connection()
-    
-    return jsonify({
+    payload = {
         "status": "ok" if db_connected else "degraded",
         "database": "connected" if db_connected else "disconnected",
         "auth": "supabase"
-    }), 200 if db_connected else 503
+    }
+    status_code = 200 if db_connected else 503
+    _HEALTH_LAST_TS = now
+    _HEALTH_LAST_PAYLOAD = payload
+    _HEALTH_LAST_STATUS = status_code
+    return jsonify(payload), status_code
 
 # ==================== ERROR HANDLERS ====================
 

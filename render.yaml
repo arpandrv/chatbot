@@ -5,4 +5,4 @@ services:
     rootDir: aimhi-chatbot
     dockerfilePath: aimhi-chatbot/Dockerfile
     autoDeploy: true
-    healthCheckPath: /health
+    healthCheckPath: /healthz
