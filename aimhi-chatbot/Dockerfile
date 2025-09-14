@@ -27,5 +27,5 @@ EXPOSE 5000
 ENV FLASK_ENV=production \
     PORT=5000
 
-# Start with gunicorn (prod), respect PORT if provided by platform
-CMD ["/bin/sh", "-lc", "exec gunicorn -w 2 -b 0.0.0.0:${PORT:-5000} aimhi-chatbot.app:app"]
+# Start with gunicorn (prod), respect PORT; app module is at /app/app.py
+CMD ["/bin/sh", "-lc", "exec gunicorn -b 0.0.0.0:${PORT:-5000} app:app"]
