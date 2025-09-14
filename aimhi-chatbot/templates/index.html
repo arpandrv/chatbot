@@ -22,6 +22,14 @@
     // Optional override: window.APP_CONFIG = { apiBase: 'http://localhost:5000' }
     window.APP_CONFIG = window.APP_CONFIG || {};
   </script>
+  <!-- Supabase JS for OAuth (Google) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    window.SUPABASE = {
+      url: "{{ supabase_url }}",
+      key: "{{ supabase_anon_key }}",
+    };
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -50,7 +58,9 @@
         <div class="flex items-center gap-2">
           <button class="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 ring-1 ring-white/30 text-white flex items-center gap-2" onclick="window.UI.openHistory()"><i class="bi bi-clock-history"></i><span class="hidden sm:inline">History</span></button>
           <button class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 ring-1 ring-white/30 text-white flex items-center gap-2" onclick="window.UI.showHelp()"><i class="bi bi-life-preserver"></i><span class="hidden sm:inline">Get Help</span></button>
+          <div id="userDisplay" class="hidden px-3 py-2 rounded-full bg-white/10 ring-1 ring-white/30 text-white text-sm">Signed in as <span id="userFirstName"></span></div>
           <button class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 ring-1 ring-white/30 text-white flex items-center gap-2" id="authBtn" onclick="window.UI.openAuth()"><i class="bi bi-person"></i><span id="authBtnText" class="hidden sm:inline">Sign in</span></button>
+          <button class="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 ring-1 ring-white/30 text-white hidden items-center gap-2" id="signOutBtn" onclick="window.UI.signOut()"><i class="bi bi-box-arrow-right"></i><span class="hidden sm:inline">Sign out</span></button>
         </div>
       </header>
 
@@ -98,26 +108,55 @@
     </div>
   </div>
 
-  <!-- Auth Modal -->
+  <!-- Auth Modal (Google OAuth) -->
   <div class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center" id="authModal" aria-hidden="true">
     <div class="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-5 text-neutral-900">
       <h4 class="text-lg font-semibold mb-3">Sign in to Yarn</h4>
-      <form id="authForm" class="space-y-3">
+      <div class="space-y-3">
+        <button id="googleLoginBtn" class="w-full px-4 py-2 rounded-md border border-neutral-300 hover:bg-neutral-100 flex items-center justify-center gap-2">
+          <img alt="Google" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5"/>
+          <span>Continue with Google</span>
+        </button>
+        <div class="text-[11px] text-neutral-500">We use Supabase Auth for secure sign-in. Your session stays on this device.</div>
+        <div class="flex items-center justify-between pt-1">
+          <div class="mt-2 text-xs text-neutral-500">API base: <code id="apiBaseDisplay"></code></div>
+          <button type="button" class="px-4 py-2 rounded-md border border-neutral-300 hover:bg-neutral-100" onclick="window.UI.closeAuth()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Crisis Popup -->
+  <div class="hidden fixed inset-0 bg-black/60 z-50 items-center justify-center" id="crisisPopup" role="dialog" aria-hidden="true">
+    <div class="w-full max-w-lg rounded-xl border border-neutral-200 bg-white p-5 text-neutral-900 shadow-2xl">
+      <div class="flex items-start justify-between gap-3">
         <div>
-          <label class="text-sm text-neutral-600">Email</label>
-          <input id="authEmail" type="email" class="w-full mt-1 rounded-md bg-white border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-primary" placeholder="you@example.com" required />
+          <h3 class="text-lg font-semibold mb-1">You deserve support</h3>
+          <p class="text-sm text-neutral-700">It sounds like you might be going through a tough time. Here are 24/7 support options you can reach out to right now:</p>
         </div>
-        <div>
-          <label class="text-sm text-neutral-600">Password</label>
-          <input id="authPassword" type="password" class="w-full mt-1 rounded-md bg-white border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-primary" placeholder="********" minlength="8" required />
+        <button class="text-neutral-500 hover:text-neutral-900" aria-label="Close" onclick="window.UI.confirmContinueChat()"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="mt-4 space-y-3">
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <div class="font-medium">13YARN (13 92 76)</div>
+          <div class="text-sm text-neutral-700">Aboriginal & Torres Strait Islander Crisis Support</div>
+          <div class="mt-2 flex gap-2">
+            <a class="px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700" href="tel:139276">Call</a>
+            <a class="px-3 py-1.5 rounded-md border border-amber-300 hover:bg-amber-100" href="https://www.13yarn.org.au/" target="_blank" rel="noopener">Visit site</a>
+          </div>
         </div>
-        <div class="flex gap-2">
-          <button type="submit" class="px-4 py-2 rounded-md bg-primary hover:bg-blue-600 text-white" id="loginBtn">Sign in</button>
-          <button type="button" class="px-4 py-2 rounded-md border border-neutral-300 hover:bg-neutral-100" id="registerBtn">Register</button>
-          <button type="button" class="px-4 py-2 rounded-md ml-auto border border-neutral-300 hover:bg-neutral-100" onclick="window.UI.closeAuth()">Close</button>
+        <div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
+          <div class="font-medium">Lifeline (13 11 14)</div>
+          <div class="text-sm text-neutral-700">24/7 crisis support and suicide prevention services</div>
+          <div class="mt-2 flex gap-2">
+            <a class="px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700" href="tel:131114">Call</a>
+            <a class="px-3 py-1.5 rounded-md border border-blue-300 hover:bg-blue-100" href="https://www.lifeline.org.au/" target="_blank" rel="noopener">Visit site</a>
+          </div>
         </div>
-      </form>
-      <div class="mt-2 text-xs text-neutral-500">API base: <code id="apiBaseDisplay"></code></div>
+      </div>
+      <div class="mt-4 flex items-center justify-end gap-2">
+        <button class="px-4 py-2 rounded-md border border-neutral-300 hover:bg-neutral-100" onclick="window.UI.confirmContinueChat()">Continue chatting</button>
+      </div>
     </div>
   </div>
 

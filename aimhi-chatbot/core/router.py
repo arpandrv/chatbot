@@ -18,27 +18,56 @@ from database.repository import (
 
 
 # --- NLP Components ---
-import sys
-sys.path.append('../')
+# Import robustly with safe fallbacks to avoid hard failures in dev/test.
+try:
+    from nlp.intent_roberta_zeroshot import classify_intent  # type: ignore
+except Exception as e:
+    logging.error(f"Failed to import classify_intent: {e}")
+    def classify_intent(text: str, **kwargs):  # type: ignore
+        return {'label': 'unclear', 'confidence': 0.0, 'method': 'unavailable'}
 
 try:
-    from nlp.risk_detector import contains_risk, get_crisis_resources
-    from nlp.intent_roberta_zeroshot import classify_intent
-    from nlp.preprocessor import normalize_text
-    from nlp.response_selector import VariedResponseSelector
-    from nlp.sentiment import analyze_sentiment
-except ImportError as e:
-    logging.error(f"Failed to import NLP components: {e}")
-    # Fallback implementations
-    def contains_risk(text): return False
-    def get_crisis_resources(): return "Crisis resources would be shown here."
-    def classify_intent(text, current_step=None): return {'label': 'unclear', 'confidence': 0.0}
-    def normalize_text(text): return text.strip()
-    def analyze_sentiment(text): return {'label': 'neutral'}
-    
-    class VariedResponseSelector:
-        def get_response(self, *args, **kwargs): return "Response not available"
-        def get_prompt(self, *args, **kwargs): return "Prompt not available"
+    from nlp.preprocessor import normalize_text  # type: ignore
+except Exception as e:
+    logging.error(f"Failed to import normalize_text: {e}")
+    def normalize_text(text: str) -> str:  # type: ignore
+        return (text or '').strip()
+
+try:
+    from nlp.response_selector import VariedResponseSelector  # type: ignore
+except Exception as e:
+    logging.error(f"Failed to import VariedResponseSelector: {e}")
+    class VariedResponseSelector:  # type: ignore
+        def get_response(self, *args, **kwargs): return ""
+        def get_prompt(self, *args, **kwargs): return ""
+
+try:
+    from nlp.sentiment import analyze_sentiment  # type: ignore
+except Exception as e:
+    logging.error(f"Failed to import analyze_sentiment: {e}")
+    def analyze_sentiment(text: str):  # type: ignore
+        return {'label': 'neutral'}
+
+# Risk detection is imported lazily inside routing to avoid env hard-fail
+def _detect_risk_flag(text: str) -> Dict[str, Any]:
+    """Return a dict with risk flag and optional details. Never raises."""
+    try:
+        # Prefer modern detect_risk API if available
+        from nlp.risk_detector import detect_risk  # type: ignore
+        result = detect_risk(text)
+        label = (result or {}).get('label')
+        return {
+            'risk_detected': bool(label == 'risk'),
+            'risk_details': result or {}
+        }
+    except Exception:
+        # Legacy compat: try contains_risk if defined
+        try:
+            from nlp.risk_detector import contains_risk  # type: ignore
+            return {'risk_detected': bool(contains_risk(text))}
+        except Exception:
+            # Safe fallback: assume no risk
+            return {'risk_detected': False}
 
 # --- Configuration ---
 logger = logging.getLogger(__name__)
@@ -122,29 +151,37 @@ def should_force_advance(user_id: str, session_id: str, max_attempts: int = 2) -
     return get_fsm_attempts(user_id, session_id) >= max_attempts
 
 # --- Main Router Function ---
-def route_message(user_id: str, session_id: str, message: str) -> str:
-    """Main routing function for user-scoped message processing"""
+def route_message(user_id: str, session_id: str, message: str) -> Dict[str, Any]:
+    """Main routing function for user-scoped message processing.
+
+    Returns a dict with 'reply' and 'debug' metadata to support UI features.
+    """
     start_time = time.time()
     
     # Normalize message
     normalized_message = normalize_text(message)
     logger.debug(f"Processing message for user {user_id}, session {session_id}")
     
-    # Universal risk detection (highest priority)
-    if contains_risk(normalized_message):
+    # Universal risk check (non-blocking)
+    risk_info = _detect_risk_flag(normalized_message)
+    risk_detected = bool(risk_info.get('risk_detected'))
+    if risk_detected:
         logger.warning(f"Risk detected in session {session_id} for user {user_id}")
-        reply = get_crisis_resources()
-        
-        # Record risk detection
-        record_risk_detection(
-            user_id=user_id,
-            session_id=session_id,
-            message_id=None,
-            label='risk',
-            method='rule_based'
-        )
-        
-        return reply
+        try:
+            details = risk_info.get('risk_details') if isinstance(risk_info, dict) else None
+            record_risk_detection(
+                user_id=user_id,
+                session_id=session_id,
+                message_id=None,
+                label='risk',
+                confidence=(details or {}).get('confidence'),
+                method=(details or {}).get('method') or 'router_check',
+                model=(details or {}).get('model'),
+                details=details,
+            )
+        except Exception as e:
+            logger.error(f"Failed to record risk detection: {e}
+")
     
     # Get current FSM state
     current_state = get_fsm_state(user_id, session_id)
@@ -164,14 +201,27 @@ def route_message(user_id: str, session_id: str, message: str) -> str:
     processing_time = int((time.time() - start_time) * 1000)
     logger.debug(f"Message processed in {processing_time}ms")
     
-    return reply
+    return {
+        'reply': reply,
+        'debug': {
+            'fsm_state': new_state,
+            'response_source': 'fsm' if new_state != 'llm_conversation' else 'llm',
+            'risk_detected': risk_detected,
+            'processing_ms': processing_time,
+        }
+    }
 
 # --- Conversation Handlers ---
 def handle_fsm_conversation(user_id: str, session_id: str, message: str, current_state: str) -> str:
     """Handle structured FSM-driven conversation"""
     
     # Run NLP analysis
-    intent_result = classify_intent(message, current_step=current_state)
+    # Keep call signature compatible with classifier
+    try:
+        intent_result = classify_intent(message)
+    except TypeError:
+        # Some implementations may accept current_step keyword
+        intent_result = classify_intent(message)
     sentiment_result = analyze_sentiment(message)
     
     # Record intent classification

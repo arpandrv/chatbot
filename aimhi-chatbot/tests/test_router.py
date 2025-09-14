@@ -8,8 +8,8 @@
 # - Control environment var LLM_ENABLED via os.environ for LLM branch tests.
 #
 # Test cases:
-# - route_message risk short-circuit: when contains_risk returns True, returns get_crisis_resources value
-#   and records risk via record_risk_detection, without calling other handlers.
+# - route_message risk non-blocking: when risk detected, returns normal reply and debug.risk_detected == True,
+#   and records risk via record_risk_detection.
 # - FSM initial state restore: when get_session provides an fsm_state, router uses it; otherwise defaults to 'welcome'.
 # - Welcome -> next state: any non-trivial message advances to 'support_people' and update_session_state is called.
 # - Clarify/attempts: for 'support_people' with classify_intent returning 'unclear', first attempt yields 'clarify' response;
@@ -23,4 +23,3 @@
 # - Avoid importing real NLP classes; patch symbols in core.router module namespace (e.g., core.router.contains_risk).
 # - Use patch.dict(os.environ, {"LLM_ENABLED": "true/false"}, clear=False) to toggle behavior.
 # - Ensure no network calls; all requests from NLP modules must be mocked if they accidentally import.
-

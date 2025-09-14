@@ -51,8 +51,6 @@
     setToken,
     setApiBase,
     health: () => jsonFetch('/health', {}),
-    register: (email, password) => jsonFetch('/auth/register', { method: 'POST', body: { email, password }, retries: 0 }),
-    login: (email, password) => jsonFetch('/auth/login', { method: 'POST', body: { email, password }, retries: 0 }),
     createSession: (fsm_state) => jsonFetch('/sessions', { method: 'POST', body: { fsm_state } }),
     sendMessage: (sessionId, message) => jsonFetch(`/sessions/${sessionId}/messages`, { method: 'POST', body: { message } }),
     getMessages: (sessionId, limit=50) => jsonFetch(`/sessions/${sessionId}/messages?limit=${limit}`),

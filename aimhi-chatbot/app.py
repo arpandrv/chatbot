@@ -88,86 +88,9 @@ if not test_connection() and IS_PROD:
 logger.info("✅ Flask app initialized with Supabase backend")
 
 # ==================== AUTHENTICATION ENDPOINTS ====================
+# OAuth handled client-side with Supabase JS. Backend verifies JWT via middleware.
 
-@app.route('/auth/register', methods=['POST'])
-@limiter.limit("5 per minute")
-def register():
-    """Register a new user with Supabase Auth"""
-    from config.supabase_client import supabase_anon
-    
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'JSON body required'}), 400
-    
-    email = data.get('email')
-    password = data.get('password')
-    
-    if not email or not password:
-        return jsonify({'error': 'Email and password required'}), 400
-    
-    if len(password) < 8:
-        return jsonify({'error': 'Password must be at least 8 characters'}), 400
-    
-    response = supabase_anon.auth.sign_up({
-        'email': email,
-        'password': password
-    })
-    
-    if response.user:
-        logger.info(f"User registered: {response.user.id}")
-        return jsonify({
-            'message': 'Registration successful',
-            'user_id': response.user.id,
-            'access_token': response.session.access_token if response.session else None,
-            'refresh_token': response.session.refresh_token if response.session else None
-        }), 201
-    
-    return jsonify({'error': 'Registration failed'}), 400
-
-@app.route('/auth/login', methods=['POST'])
-@limiter.limit("10 per minute")
-def login():
-    """Login with email and password"""
-    from config.supabase_client import supabase_anon
-    
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'JSON body required'}), 400
-    
-    email = data.get('email')
-    password = data.get('password')
-    
-    if not email or not password:
-        return jsonify({'error': 'Email and password required'}), 400
-    
-    response = supabase_anon.auth.sign_in_with_password({
-        'email': email,
-        'password': password
-    })
-    
-    if response.user and response.session:
-        logger.info(f"User logged in: {response.user.id}")
-        return jsonify({
-            'message': 'Login successful',
-            'user_id': response.user.id,
-            'access_token': response.session.access_token,
-            'refresh_token': response.session.refresh_token,
-            'expires_at': response.session.expires_at
-        }), 200
-    
-    return jsonify({'error': 'Invalid credentials'}), 401
-
-@app.route('/auth/logout', methods=['POST'])
-@require_auth
-def logout():
-    """Logout current user"""
-    from config.supabase_client import supabase_anon
-    
-    supabase_anon.auth.sign_out()
-    user_id = get_current_user_id()
-    logger.info(f"User logged out: {user_id}")
-    
-    return jsonify({'message': 'Logout successful'}), 200
+# Note: Logout is handled client-side via Supabase JS (supabase.auth.signOut()).
 
 @app.route('/auth/me', methods=['GET'])
 @require_auth
@@ -244,21 +167,29 @@ def send_user_message(session_id):
     
     # Import router and process message
     from core.router import route_message
-    bot_response = route_message(user_id, session_id, message)
-    
+    route_result = route_message(user_id, session_id, message)
+    # Normalize to text + debug
+    if isinstance(route_result, dict):
+        bot_response_text = route_result.get('reply') or ''
+        debug_payload = route_result.get('debug') or {}
+    else:
+        bot_response_text = str(route_result)
+        debug_payload = {}
+
     # Save bot response
     bot_msg_id = save_message(
         user_id=user_id,
         session_id=session_id,
         role='bot',
-        message=bot_response,
+        message=bot_response_text,
         message_type='fsm_response'
     )
     
     return jsonify({
         'user_message_id': user_msg_id,
         'bot_message_id': bot_msg_id,
-        'reply': bot_response
+        'reply': bot_response_text,
+        'debug': debug_payload
     }), 200
 
 @app.route('/sessions/<session_id>/messages', methods=['GET'])
@@ -310,8 +241,12 @@ def list_sessions():
 
 @app.route('/')
 def index():
-    """Serve the main HTML page"""
-    return render_template('index.html')
+    """Serve the main HTML page with Supabase config for OAuth."""
+    return render_template(
+        'index.html',
+        supabase_url=os.getenv('SUPABASE_URL', ''),
+        supabase_anon_key=os.getenv('SUPABASE_ANON_KEY', '')
+    )
 
 @app.route("/health")
 def health_check():

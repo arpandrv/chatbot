@@ -52,6 +52,7 @@
     set('userSentiment', safe(info.user_sentiment));
     set('fallbackInfo', info.fallback_triggered ? `Triggered (Attempt ${info.attempt_count||1})` : 'Not triggered');
     set('riskDetection', info.risk_detected ? 'Risk detected' : 'No risk');
+    if (info.risk_detected) { window.UI.showCrisisPopup && window.UI.showCrisisPopup(); }
   };
 
   const setBusy = (busy) => {
@@ -111,20 +112,90 @@
   const openAuth = () => { const m = qs('#authModal'); m.classList.remove('hidden'); m.style.display = 'flex'; m.setAttribute('aria-hidden','false');
     qs('#apiBaseDisplay').textContent = API.base; };
   const closeAuth = () => { const m = qs('#authModal'); m.classList.add('hidden'); m.style.display = 'none'; m.setAttribute('aria-hidden','true'); };
-  const onLogin = async (e) => {
-    e.preventDefault();
-    const email = qs('#authEmail').value.trim(); const password = qs('#authPassword').value;
-    try{
-      const res = await API.login(email, password);
-      const token = res.access_token; API.setToken(token);
-      qs('#authBtnText').textContent = 'Signed in';
-      await ensureSession(); await loadHistory(); closeAuth();
-    } catch (err){ alert(err?.data?.error || err.message || 'Login failed'); }
+  // Email/password login removed; only OAuth is supported.
+
+  // Supabase OAuth (Google/Apple)
+  let supabase = null;
+  const initSupabase = () => {
+    try {
+      if (window.SUPABASE?.url && window.SUPABASE?.key && window.supabase) {
+        supabase = window.supabase.createClient(window.SUPABASE.url, window.SUPABASE.key);
+      }
+    } catch {}
   };
-  const onRegister = async () => {
-    const email = qs('#authEmail').value.trim(); const password = qs('#authPassword').value;
-    try{ await API.register(email, password); alert('Registered. You can now sign in.'); }
-    catch (err){ alert(err?.data?.error || err.message || 'Registration failed'); }
+
+  // User display helpers
+  const cap = (s) => s ? (s[0].toUpperCase() + s.slice(1).toLowerCase()) : '';
+  const firstNameFromEmail = (email) => {
+    if (!email || !email.includes('@')) return '';
+    const local = email.split('@')[0];
+    const parts = local.split(/[._\-+]+/).filter(Boolean);
+    const raw = parts[0] || '';
+    const onlyLetters = raw.replace(/[^A-Za-z]/g, '');
+    return cap(onlyLetters || raw);
+  };
+  const firstNameFromUser = (user) => {
+    try {
+      const meta = user?.user_metadata || {};
+      const gn = meta.given_name || meta.first_name;
+      if (gn && typeof gn === 'string') return cap(gn);
+      const full = meta.name || meta.full_name;
+      if (full && typeof full === 'string') return cap(full.split(/\s+/)[0] || '');
+      const email = user?.email;
+      const fromEmail = firstNameFromEmail(email);
+      return fromEmail || '';
+    } catch { return ''; }
+  };
+  const setUserHeader = (firstName) => {
+    const wrap = qs('#userDisplay'); const span = qs('#userFirstName');
+    if (!wrap || !span) return;
+    if (firstName) { span.textContent = firstName; wrap.classList.remove('hidden'); }
+    else { wrap.classList.add('hidden'); span.textContent=''; }
+  };
+  const loginWithProvider = async (provider) => {
+    if (!supabase) { alert('Auth not configured'); return; }
+    const redirectTo = window.location.origin + '/';
+    const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+    if (error) alert(error.message || 'Sign-in failed');
+  };
+  const attachOAuthHandlers = () => {
+    const g = qs('#googleLoginBtn'); if (g) g.onclick = () => loginWithProvider('google');
+  };
+  const restoreSupabaseSession = async () => {
+    if (!supabase) return false;
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      if (token) {
+        API.setToken(token);
+        qs('#authBtnText').textContent = 'Signed in';
+        const so = qs('#signOutBtn'); if (so) so.classList.remove('hidden');
+        const user = data?.session?.user;
+        const fn = firstNameFromUser(user);
+        setUserHeader(fn);
+        return true;
+      }
+      return false;
+    } catch { return false; }
+  };
+
+  const signOut = async () => {
+    try { if (supabase) await supabase.auth.signOut(); } catch {}
+    API.setToken('');
+    localStorage.removeItem('session_id');
+    sessionId = null;
+    qs('#authBtnText').textContent = 'Sign in';
+    const so = qs('#signOutBtn'); if (so) so.classList.add('hidden');
+    setUserHeader('');
+    openAuth();
+  };
+
+  // Crisis popup controls
+  const showCrisisPopup = () => { const m = qs('#crisisPopup'); if (!m) return; m.classList.remove('hidden'); m.style.display='flex'; m.setAttribute('aria-hidden','false'); };
+  const hideCrisisPopup = () => { const m = qs('#crisisPopup'); if (!m) return; m.classList.add('hidden'); m.style.display='none'; m.setAttribute('aria-hidden','true'); };
+  const confirmContinueChat = () => {
+    const ok = confirm('Are you sure you want to continue chatting?');
+    if (ok) hideCrisisPopup(); else showCrisisPopup();
   };
 
   // Public UI helpers
@@ -135,20 +206,30 @@
     hideHelp: ()=>{ const m=qs('#helpModal'); m.classList.add('hidden'); m.style.display='none'; m.setAttribute('aria-hidden','true'); },
     toggleDebugPanel: ()=>{ const p=qs('#debugPanel'); const i=qs('#debugToggleIcon'); p.classList.toggle('collapsed'); i.className=p.classList.contains('collapsed')?'bi bi-chevron-left':'bi bi-chevron-right'; },
     openAuth, closeAuth,
+    signOut,
     newChat: async ()=>{ localStorage.removeItem('session_id'); sessionId=null; await ensureSession(); await loadHistory(); },
     openHistory: async ()=>{ const d=qs('#historyDrawer'); if (d){ d.classList.remove('hidden'); await loadSessions(); } },
     closeHistory: ()=>{ const d=qs('#historyDrawer'); if (d){ d.classList.add('hidden'); } },
+    showCrisisPopup, confirmContinueChat
   };
 
   // Init
   document.addEventListener('DOMContentLoaded', async () => {
     els.chat = qs('#chatMessages'); els.input = qs('#messageInput'); els.send = qs('#sendBtn');
-    const authForm = qs('#authForm'); authForm.addEventListener('submit', onLogin); qs('#registerBtn').addEventListener('click', onRegister);
+    attachOAuthHandlers();
+    initSupabase();
     els.send.addEventListener('click', sendMessage);
     els.input.addEventListener('keypress', (e)=>{ if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }});
 
     // Token/session restore
-    const token = localStorage.getItem('token'); if (token) API.setToken(token);
+    let token = localStorage.getItem('token'); if (token) API.setToken(token);
+    // Try restore from Supabase session
+    const restored = await restoreSupabaseSession();
+    if (restored) token = localStorage.getItem('token');
+    // If token exists but no Supabase user loaded (legacy token), try to fetch user anyway
+    if (token && supabase) {
+      try { const { data: u } = await supabase.auth.getUser(); const fn = firstNameFromUser(u?.user); setUserHeader(fn); } catch {}
+    }
     sessionId = localStorage.getItem('session_id');
 
     // Health check and environment chip
@@ -156,8 +237,9 @@
       const h = await API.health(); qs('#envChip').textContent = `API: ${API.base} (${h.status||'?'})`;
     } catch { qs('#envChip').textContent = `API: ${API.base} (offline)`; }
 
-    if (token) {
+    if (localStorage.getItem('token')) {
       qs('#authBtnText').textContent = 'Signed in';
+      const so = qs('#signOutBtn'); if (so) so.classList.remove('hidden');
       try { if (!sessionId) await ensureSession(); await loadHistory(); } catch {}
     } else {
       openAuth();
