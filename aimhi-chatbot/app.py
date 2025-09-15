@@ -11,6 +11,8 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
+from pathlib import Path
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # --- Local Imports ---
 from config.auth_middleware import require_auth, get_current_user_id
@@ -21,7 +23,10 @@ from database.repository import (
     record_intent_classification
 )
 
-load_dotenv()
+# Only load .env automatically in development to avoid leaking dev values in prod
+_dev_guess = os.getenv("FLASK_ENV", "production") != "production"
+if _dev_guess:
+    load_dotenv(dotenv_path=str(Path(__file__).with_name(".env")), override=True)
 
 # --- Configuration ---
 FLASK_ENV = os.getenv("FLASK_ENV", "production")
@@ -43,9 +48,10 @@ logger = logging.getLogger("app")
 
 # --- Flask App Initialization ---
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
 if IS_PROD and not SECRET_KEY:
-    logger.warning("SECRET_KEY not set, using generated key")
+    raise SystemExit("SECRET_KEY must be set in production")
 app.secret_key = SECRET_KEY or os.urandom(24).hex()
 
 # --- CORS Configuration ---
@@ -74,6 +80,11 @@ CORS(app, resources={
 }, vary_header=True)
 
 # --- Rate Limiting ---
+# Prefer Redis when available (e.g., on Render) to avoid per-process memory limits
+REDIS_URL = os.getenv("REDIS_URL")
+if (not RATE_LIMIT_STORAGE or RATE_LIMIT_STORAGE == "memory://") and REDIS_URL:
+    RATE_LIMIT_STORAGE = REDIS_URL
+
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
@@ -189,7 +200,7 @@ def send_user_message(session_id):
         'user_message_id': user_msg_id,
         'bot_message_id': bot_msg_id,
         'reply': bot_response_text,
-        'debug': debug_payload
+        'debug': (debug_payload if not IS_PROD else {})
     }), 200
 
 @app.route('/sessions/<session_id>/messages', methods=['GET'])
@@ -322,7 +333,7 @@ def add_security_headers(response):
     else:
         csp = (
             "default-src 'self'; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             "script-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com; "
             "img-src 'self' data: https://www.gstatic.com; "
             "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; "
