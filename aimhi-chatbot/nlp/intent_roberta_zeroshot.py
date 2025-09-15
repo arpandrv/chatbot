@@ -117,7 +117,7 @@ def classify_intent_with_fallback(text: str, current_step: str = None) -> Dict[s
         result = classify_intent_llm(text, current_step)
         return {
             "label": result.get("label", "unclear"),
-            "confidence": "NA for LLMs",
+            "confidence": None,
             "method": "llm_fallback",
             "fallback_reason": result.get("fallback_reason", "roberta_low_confidence"),
         }

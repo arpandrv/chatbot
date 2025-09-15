@@ -44,12 +44,14 @@ def analyze_sentiment(text: str) -> Dict[str, Any]:
         payload = {"inputs": text}
         resp = requests.post(HF_SENTIMENT_API_URL, headers=headers, json=payload)
         resp.raise_for_status()
-        result: List[Dict[str, Any]] = resp.json()
-        if not isinstance(result, list) or not result:
-            raise RuntimeError("Empty sentiment response from HF API")
+        result = resp.json()
+        # HF router commonly returns [[{label, score}, ...]] for text-classification
+        if not isinstance(result, list) or not result or not isinstance(result[0], list) or not result[0]:
+            raise RuntimeError("Unexpected sentiment response shape from HF API")
 
+        rows: List[Dict[str, Any]] = result[0]
         # Select top label by score
-        top = max(result, key=lambda r: float(r.get("score", 0.0)))
+        top = max(rows, key=lambda r: float(r.get("score", 0.0)))
         label = _normalize_sentiment_label(str(top.get("label", "neutral")))
         confidence = float(top.get("score", 0.0))
 
