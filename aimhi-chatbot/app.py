@@ -255,11 +255,13 @@ _HEALTH_LAST_PAYLOAD = None
 _HEALTH_LAST_STATUS = 503
 
 @app.route("/healthz")
+@limiter.exempt
 def healthz():
     """Shallow health: does not hit Supabase; safe for frequent platform checks."""
     return jsonify({"status": "ok"}), 200
 
 @app.route("/health")
+@limiter.exempt
 def health_check():
     """Deep health: includes Supabase connectivity with simple caching to limit calls."""
     global _HEALTH_LAST_TS, _HEALTH_LAST_PAYLOAD, _HEALTH_LAST_STATUS
