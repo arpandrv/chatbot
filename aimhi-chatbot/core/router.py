@@ -93,21 +93,31 @@ def get_fsm_key(user_id: str, session_id: str) -> str:
     return f"{user_id}:{session_id}"
 
 def get_fsm_state(user_id: str, session_id: str) -> str:
-    """Get current FSM state for user session"""
+    """Get current FSM state for user session, syncing from DB each call.
+
+    This avoids cross-worker drift by reading the authoritative state from
+    the database and updating the per-process cache. Attempts remain
+    per-process and ephemeral by design.
+    """
     fsm_key = get_fsm_key(user_id, session_id)
-    
-    if fsm_key not in _fsm_cache:
-        # Try to restore state from database
+
+    # Read authoritative state from DB
+    try:
         session = get_session(user_id, session_id)
-        if session and session.get('fsm_state'):
-            state = session['fsm_state']
-            logger.info(f"Restored FSM state for {session_id}: {state}")
-        else:
-            state = 'welcome'
-            logger.info(f"Created new FSM for session {session_id}")
-        
-        _fsm_cache[fsm_key] = {'state': state, 'attempts': 0}
-    
+    except Exception as e:
+        logger.warning(f"Failed to fetch session from DB for {session_id}: {e}")
+        session = None
+    if session and session.get('fsm_state'):
+        db_state = session['fsm_state']
+    else:
+        db_state = 'welcome'
+
+    prev = _fsm_cache.get(fsm_key)
+    prev_attempts = prev.get('attempts', 0) if prev else 0
+    if not prev or prev.get('state') != db_state:
+        _fsm_cache[fsm_key] = {'state': db_state, 'attempts': prev_attempts}
+        logger.debug(f"FSM cache sync for {session_id}: {prev.get('state') if prev else None} -> {db_state}")
+
     return _fsm_cache[fsm_key]['state']
 
 def set_fsm_state(user_id: str, session_id: str, new_state: str):
@@ -143,6 +153,11 @@ def advance_fsm_state(user_id: str, session_id: str) -> bool:
     if can_advance_fsm(current_state):
         new_state = FSM_TRANSITIONS[current_state]
         set_fsm_state(user_id, session_id, new_state)
+        # Persist immediately to avoid cross-worker drift
+        try:
+            update_session_state(user_id, session_id, fsm_state=new_state)
+        except Exception as e:
+            logger.warning(f"Failed to persist FSM advance {current_state}->{new_state} for {session_id}: {e}")
         return True
     
     return False
@@ -185,6 +200,7 @@ def route_message(user_id: str, session_id: str, message: str) -> Dict[str, Any]
     
     # Get current FSM state
     current_state = get_fsm_state(user_id, session_id)
+    logger.info(f"FSM state (before): user={user_id} session={session_id} state={current_state}")
     
     # Handle different conversation types
     if current_state == 'llm_conversation':
@@ -197,6 +213,7 @@ def route_message(user_id: str, session_id: str, message: str) -> Dict[str, Any]
     
     # Update session state if changed
     new_state = get_fsm_state(user_id, session_id)
+    logger.info(f"FSM state (after): user={user_id} session={session_id} state={new_state}")
     if new_state != current_state:
         update_session_state(user_id, session_id, fsm_state=new_state)
         logger.debug(f"Session {session_id} advanced: {current_state} -> {new_state}")

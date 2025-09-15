@@ -107,6 +107,11 @@
     if (info.risk_detected) { 
       window.UI.showCrisisPopup && window.UI.showCrisisPopup(); 
     }
+    try {
+      if (info && (info.fsm_state || info.response_source || info.processing_ms !== undefined)) {
+        console.debug('debug:', info);
+      }
+    } catch {}
   };
 
   const setBusy = (busy) => {
