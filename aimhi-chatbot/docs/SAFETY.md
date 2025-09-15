@@ -12,16 +12,22 @@ This document outlines how the Yarn chatbot mitigates risk, enforces boundaries,
 ## Risk Detection and Response
 
 Detection pipeline
-- Router calls a risk gate before normal flow. Intended behavior: call `nlp.risk_detector.detect_risk(text)` and read `{"label": "risk|no_risk"}`.
-- Primary: LLM JSON classifier (OpenAI or Ollama) with strict `LLM_SYSTEM_PROMPT`
-- Fallback: HF Inference `sentinet/suicidality` with a confidence threshold
+
+- Router calls a risk gate before normal flow using `nlp.risk_detector.detect_risk(text)` and reads `{'label': 'risk'|'no_risk'}`.
+- Primary: LLM JSON classifier (OpenAI or Ollama) with strict `LLM_SYSTEM_PROMPT_RISK`
+- Fallback: HF Inference `sentinet/suicidality` with configurable `RISK_CONFIDENCE_THRESHOLD`
+- JSON parsing handles both single and double quote formats for robust LLM response handling
 
 Response on risk
-- Conversation is short‑circuited and a crisis help message is returned, e.g., 13YARN (13 92 76) and Lifeline (13 11 14)
+
+- Conversation is paused and a crisis help message is returned, e.g., 13YARN (13 92 76) and Lifeline (13 11 14)
 - The detection event is logged via `database/repository.record_risk_detection(...)`
 
-Important wiring note
-- Current code in `core/router.py` imports `contains_risk` from `nlp/risk_detector`, which is not exported. This forces a stubbed “no risk” fallback. To re‑enable the safety gate, switch the router to use `detect_risk(...)` (see LLM_GUIDELINES — Known Issues).
+Implementation details
+
+- Risk detection is properly integrated with single-quote JSON response parsing
+- LLM system prompt configured via `LLM_SYSTEM_PROMPT_RISK` environment variable
+- Fallback model confidence threshold configurable via `RISK_CONFIDENCE_THRESHOLD`
 
 ## Content Boundaries
 
@@ -41,27 +47,22 @@ Important wiring note
 
 - CORS: in production, `CORS_ORIGINS` must list only trusted origins; app refuses to start otherwise
 - Security headers: CSP (restricts scripts/styles/connect), X‑Frame‑Options=DENY, X‑Content‑Type‑Options=nosniff, basic XSS protection
-- Rate limiting: per‑IP global defaults (`RATE_LIMIT_DAY`, `RATE_LIMIT_HOUR`) and route‑specific caps; use Redis storage in production multi‑instance setups
+- Rate limiting: per‑IP global defaults (`RATE_LIMIT_DAY`, `RATE_LIMIT_HOUR`) and route‑specific caps; Currently using memory. use Redis storage in production multi‑instance setups
 - Authentication: all session endpoints require a valid JWT; middleware verifies `aud=authenticated` and extracts `sub` as `user_id`
 
 ## Known Gaps / Recommendations
 
-- Router risk import bug disables the risk short‑circuit — fix to use `detect_risk(...)`
 - Consider Supabase Row‑Level Security (RLS) policies mirroring repository ownership checks
 - Add abuse monitoring (e.g., repeated risk flags, excessive usage beyond limits)
 - Keep `responses.json` focused on safe phrasing; review and curate culturally safe prompts regularly
+- Implement Redis caching for faster session management while maintaining security
 
 ## Operational Checklist
 
 - Set `CORS_ORIGINS` to real domains; enforce HTTPS
-- Provide `LLM_SYSTEM_PROMPT` for risk and test with red‑team phrases
+- Provide `LLM_SYSTEM_PROMPT_RISK` for risk detection and test
 - Configure `RATE_LIMIT_STORAGE` (`redis://...`) for production
 - Verify Supabase schema via `database/schema.sql`; ensure Service Role key is not exposed client‑side
+- Set appropriate confidence thresholds: `RISK_CONFIDENCE_THRESHOLD`, `INTENT_CONFIDENCE_THRESHOLD`, `SENTIMENT_CONFIDENCE_THRESHOLD`
 
-## Testing Safety
-
-- Unit tests must mock network calls (OpenAI/Ollama/HF) and assert:
-  - Risk classifier returns JSON; router short‑circuits on risk and logs an event
-  - No PII in generated replies when LLM handoff is enabled
-  - CORS and security headers appear on responses
-
+# 

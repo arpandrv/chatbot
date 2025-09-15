@@ -7,7 +7,7 @@ This document explains how the Yarn chatbot uses Large Language Models (LLMs), t
 Primary generation
 
 - `llm/client.py` — provider‑agnostic client for OpenAI or Ollama (non‑streaming). Used by `llm/handoff_manager.py` to generate free‑form replies when the conversation transitions to an LLM conversation mode.
-- `llm/handoff_manager.py` — formats full conversation context → calls `call_llm(...)` with `LLM_HANDOFF_SYSTEM_PROMPT`. Note: `core/router.py` currently has just a dummy placeholder for `llm_conversation` branch; wiring it to `handoff_manager.handle_llm_response(...)` is recommended when enabling free‑form chat.
+- `llm/handoff_manager.py` — formats full conversation context → calls `call_llm(...)` with `LLM_HANDOFF_SYSTEM_PROMPT`.
 
 Classification / safety checks
 
@@ -28,34 +28,35 @@ Supported providers
 
 Common variables
 
-- `LLM_PROVIDER`, `LLM_MODEL`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS`, `LLM_TIMEOUT`
+- Core: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_MAX_TOKENS`
 - OpenAI: `LLM_API_KEY`, `LLM_API_BASE`
 - Ollama: `OLLAMA_API_BASE`
+- Task-specific timeouts: `LLM_TIMEOUT_RISK`, `LLM_TIMEOUT_INTENT`, `LLM_TIMEOUT_SENTIMENT`, `LLM_TIMEOUT_HANDOFF`
+- Task-specific temperatures: `LLM_TEMPERATURE_RISK`, `LLM_TEMPERATURE_INTENT`, `LLM_TEMPERATURE_SENTIMENT`, `LLM_TEMPERATURE_HANDOFF`
 
 Task‑specific prompts
 
-- Risk: `LLM_SYSTEM_PROMPT` (required). Strict JSON output.
-- Handoff/free‑form: `LLM_HANDOFF_SYSTEM_PROMPT` (optional, required if enabling LLM yarn mode).
+- Risk Detection: `LLM_SYSTEM_PROMPT_RISK` (required). Strict JSON output.
+- Intent Classification: `LLM_SYSTEM_PROMPT_INTENT` (LLM fallback)
+- Sentiment Analysis: `LLM_SYSTEM_PROMPT_SENTIMENT` (LLM fallback)
+- Handoff/free‑form: `LLM_HANDOFF_SYSTEM_PROMPT` (optional, required if enabling LLM yarn mode)
 
 Hugging Face (fallbacks and primaries)
 
 - `HF_TOKEN` is required for HF Inference API calls.
-- Optional: `HF_ZS_API_URL`, `HF_SENTIMENT_API_URL`, `HF_RISK_API_URL` to override default models.
-
-Router toggle
-
-- `LLM_ENABLED=true` enables the `llm_conversation` branch in `core/router.py`. The current handler returns a placeholder string unless you wire `handoff_manager`.
+- Model API URLs: `HF_INTENT_API_URL`, `HF_SENTIMENT_API_URL`, `HF_RISK_API_URL`
+- Confidence thresholds: `INTENT_CONFIDENCE_THRESHOLD`, `SENTIMENT_CONFIDENCE_THRESHOLD`, `RISK_CONFIDENCE_THRESHOLD`
 
 ## Prompt Contracts (Strict)
 
-Risk (required: `LLM_SYSTEM_PROMPT`)
+Risk (required: `LLM_SYSTEM_PROMPT_RISK`)
 
 - Instruction goals: single‑message suicide/self‑harm risk classifier for a youth wellbeing chatbot.
 - Output: JSON only, one of:
-  - `{"label": "risk"}`
-  - `{"label": "no_risk"}`
-- Guidance: prefer “risk” on ambiguous first‑person despair; handle slang/misspellings; no extra text.
-- Parser: `nlp/risk_detector.parse_json_response()` expects exactly a JSON object with a `label` field.
+  - `{'label': 'risk'}`
+  - `{'label': 'no_risk'}`
+- Guidance: prefer "risk" on ambiguous first‑person despair; handle slang/misspellings; no extra text.
+- Parser: `nlp/risk_detector.parse_json_response()` handles both single and double quote formats and expects a JSON object with a `label` field.
 
 Intent (fallback LLM)
 
@@ -79,8 +80,9 @@ Handoff/free‑form (optional)
 
 ## Timeouts and Budgets
 
-- `llm/client.py`: `LLM_TIMEOUT` (default 45s) for chat generation.
-- `nlp/risk_detector.py`: uses general `LLM_TIMEOUT` (default 2s) for classification; falls back to HF on failure.
+- `llm/client.py`: `LLM_TIMEOUT_HANDOFF` for chat generation.
+- `nlp/risk_detector.py`: uses `LLM_TIMEOUT_RISK` for classification; falls back to HF on failure.
+- Intent/Sentiment fallbacks: use `LLM_TIMEOUT_INTENT` and `LLM_TIMEOUT_SENTIMENT` respectively.
 - HF requests: rely on `requests` defaults; use lightweight inputs to avoid latency.
 
 ## Logging and Telemetry
@@ -88,21 +90,11 @@ Handoff/free‑form (optional)
 - Classifiers record results into Supabase via `database/repository.py` (`record_risk_detection`, `record_intent_classification`).
 - Handle exceptions defensively; classification fallbacks should never crash the request.
 
-## Known Issues / Wiring Notes
+## Known Issues
 
-- Risk gate in router: `core/router.py` attempts `from nlp.risk_detector import contains_risk, get_crisis_resources`, but `nlp/risk_detector.py` exports `detect_risk(...)` instead. This causes an `ImportError` that triggers stubbed fallbacks (disabling risk detection). Fix by adding a thin adapter in `router`:
-  - `result = detect_risk(message)`; treat `result.get("label") == "risk"` as boolean risk.
-  - Provide crisis resources string (e.g., 13YARN/Lifeline) similarly to current placeholder.
-- LLM handoff: `handle_llm_conversation` returns a placeholder when `LLM_ENABLED=true`. Wire to `llm/handoff_manager.handle_llm_response(history)` to enable.
-- Provider names: code supports `openai|ollama` only; any other value (e.g., anthropic) is ignored.
-
-## Testing Guidance
-
-- Do not hit OpenAI/Ollama/HF in tests — patch `requests.post/get` and assert payloads.
-- For router/LLM branches, use `patch.dict(os.environ, {"LLM_ENABLED": "true"})` and mock `handoff_manager`.
-- Validate JSON‑only parsing for risk/intent/sentiment fallbacks.
+- Performance: Multiple sequential API calls create latency bottlenecks. Consider parallel processing for non-blocking operations.
 
 ## Safety Principles
 
 - Always surround LLM usage with guardrails: strict prompts, timeouts, and safe fallbacks.
-- Keep free‑form generation optional and short; prioritize route to human help on any risk.
+- 

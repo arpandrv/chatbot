@@ -17,7 +17,6 @@ A Flask + Supabase, safety-aware chatbot that guides a young person through the 
 ## Quick Start
 
 1) Create a virtualenv and install deps
-
 - Windows PowerShell
   - `python -m venv .venv`
   - `.\\.venv\\Scripts\\Activate`
@@ -26,31 +25,31 @@ A Flask + Supabase, safety-aware chatbot that guides a young person through the 
   - `source .venv/bin/activate`
 
 Then install dependencies:
+
 - `pip install -r aimhi-chatbot/requirements.txt`
-
 2) Configure environment
-
 - Create `aimhi-chatbot/.env` and set at minimum:
-  - Core: `FLASK_ENV`, `SECRET_KEY`, `CORS_ORIGINS`, optional `PORT`, `LOG_LEVEL`
-  - Supabase: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`
+  - Core: `FLASK_ENV`, `SECRET_KEY`, `CORS_ORIGINS`, optional `PORT`, `LOG_LEVEL`, `WEB_CONCURRENCY`, `GUNICORN_CMD_ARGS`
+  - Supabase: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_TIMEOUT`, `SUPABASE_RETRY_ATTEMPTS`
   - HF: `HF_TOKEN`
-  - LLM: `LLM_PROVIDER` (`openai` or `ollama`), `LLM_API_KEY`, `LLM_MODEL`, `LLM_API_BASE` or `OLLAMA_API_BASE`
-  - Risk prompt: `LLM_SYSTEM_PROMPT` (JSON-only risk classifier)
-  - Optional: `LLM_HANDOFF_SYSTEM_PROMPT` (for free-form “yarn” handoff)
+  - LLM Core: `LLM_PROVIDER` (`openai` or `ollama`), `LLM_API_KEY`, `LLM_MODEL`, `LLM_API_BASE` or `OLLAMA_API_BASE`, `LLM_MAX_TOKENS`
+  - Risk Detection: `LLM_TIMEOUT_RISK`, `LLM_TEMPERATURE_RISK`, `LLM_SYSTEM_PROMPT_RISK`
+  - Intent Classification: `LLM_TIMEOUT_INTENT`, `LLM_TEMPERATURE_INTENT`, `LLM_SYSTEM_PROMPT_INTENT`
+  - Sentiment Analysis: `LLM_TIMEOUT_SENTIMENT`, `LLM_TEMPERATURE_SENTIMENT`, `LLM_SYSTEM_PROMPT_SENTIMENT`
+  - LLM Handoff: `LLM_TIMEOUT_HANDOFF`, `LLM_TEMPERATURE_HANDOFF`, `LLM_HANDOFF_SYSTEM_PROMPT`
+  - NLP Thresholds: `INTENT_CONFIDENCE_THRESHOLD`, `SENTIMENT_CONFIDENCE_THRESHOLD`, `RISK_CONFIDENCE_THRESHOLD`
+  - HF API URLs: `HF_INTENT_API_URL`, `HF_SENTIMENT_API_URL`, `HF_RISK_API_URL`
   - Rate limit: `RATE_LIMIT_STORAGE` (e.g., `memory://` or `redis://...`), `RATE_LIMIT_DAY`, `RATE_LIMIT_HOUR`
-
 3) Prepare database
-
 - In Supabase SQL Editor, run `aimhi-chatbot/database/schema.sql`
 - Use the Service Role key on server only. Clients should use the anon key.
-
 4) Run
-
 - Dev: `set FLASK_ENV=development` (Windows) or `export FLASK_ENV=development`
 - Start: `python aimhi-chatbot/app.py`
 - Open: `http://127.0.0.1:5000`
 
 Production example:
+
 - `gunicorn -w 2 -b 0.0.0.0:5000 aimhi-chatbot.app:app`
 
 ## API Overview
@@ -67,8 +66,9 @@ Production example:
   - `POST /sessions/<id>/accept` – `{step, message_id}` marks a response as final for a step
 
 Notes
+
 - All session endpoints require `Authorization: Bearer <jwt>` issued by Supabase Auth.
-- Rate limits: global defaults per IP (`RATE_LIMIT_DAY`, `RATE_LIMIT_HOUR`) and endpoint-specific caps.
+- Rate limits: global defaults per IP (`RATE_LIMIT_DAY`, `RATE_LIMIT_HOUR`) and endpoint-specific caps(Not currently robust due to use of in memory rate limit storage, future plans to move to redis)
 
 ## Architecture
 
@@ -78,7 +78,7 @@ Notes
   - `supabase_client.py` – creates service/anon clients; `test_connection()`
   - `responses.json` – culturally safe response pools
 - `core/`
-  - `router.py` – FSM flow and message routing; optional `llm_conversation` state
+  - `router.py` – FSM flow and message routing; `llm_conversation` state handling
   - `fsm.py` – FSM helpers
 - `nlp/`
   - `intent_roberta_zeroshot.py` – HF zero-shot intent + LLM fallback
@@ -92,25 +92,32 @@ Notes
 ## Environment Variables
 
 Core
+
 - `FLASK_ENV` (`development|production`), `SECRET_KEY`, `PORT`, `LOG_LEVEL`
 - `CORS_ORIGINS` – comma-separated list of allowed origins (required in production)
+- `WEB_CONCURRENCY`, `GUNICORN_CMD_ARGS` – production server configuration
 - `RATE_LIMIT_STORAGE` (`memory://`, `redis://host:port/0`, `rediss://...`), `RATE_LIMIT_DAY`, `RATE_LIMIT_HOUR`
 
 Supabase
+
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`
+- Optional: `SUPABASE_TIMEOUT`, `SUPABASE_RETRY_ATTEMPTS`
 
 Hugging Face
+
 - `HF_TOKEN` – bearer token for Inference API
-- Optional overrides: `HF_ZS_API_URL`, `HF_SENTIMENT_API_URL`, `HF_RISK_API_URL`
+- Model API URLs: `HF_INTENT_API_URL`, `HF_SENTIMENT_API_URL`, `HF_RISK_API_URL`
+- Confidence thresholds: `INTENT_CONFIDENCE_THRESHOLD`, `SENTIMENT_CONFIDENCE_THRESHOLD`, `RISK_CONFIDENCE_THRESHOLD`
 
 LLM (OpenAI/Ollama)
-- `LLM_PROVIDER` (`openai` or `ollama`)
-- `LLM_API_KEY`, `LLM_MODEL`, `LLM_API_BASE` (OpenAI)
-- `OLLAMA_API_BASE` (Ollama)
-- `LLM_TIMEOUT`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS`
-- Risk classifier prompt: `LLM_SYSTEM_PROMPT`
-- Optional handoff: `LLM_HANDOFF_SYSTEM_PROMPT`
-- Optional router toggle: `LLM_ENABLED=true` enables `llm_conversation` branch messaging
+
+- Core: `LLM_PROVIDER` (`openai` or `ollama`), `LLM_API_KEY`, `LLM_MODEL`, `LLM_MAX_TOKENS`
+- OpenAI: `LLM_API_BASE` (default: `https://api.openai.com/v1`)
+- Ollama: `OLLAMA_API_BASE` (default: `http://localhost:11434`)
+- Risk Detection: `LLM_TIMEOUT_RISK`, `LLM_TEMPERATURE_RISK`, `LLM_SYSTEM_PROMPT_RISK`
+- Intent Classification: `LLM_TIMEOUT_INTENT`, `LLM_TEMPERATURE_INTENT`, `LLM_SYSTEM_PROMPT_INTENT`
+- Sentiment Analysis: `LLM_TIMEOUT_SENTIMENT`, `LLM_TEMPERATURE_SENTIMENT`, `LLM_SYSTEM_PROMPT_SENTIMENT`
+- Handoff/Free-form: `LLM_TIMEOUT_HANDOFF`, `LLM_TEMPERATURE_HANDOFF`, `LLM_HANDOFF_SYSTEM_PROMPT`
 
 ## Security
 
@@ -122,14 +129,9 @@ LLM (OpenAI/Ollama)
 
 ## Testing
 
-- Run: `python -m unittest discover -s aimhi-chatbot/tests -p "test_*.py"`
-- Tests are scaffolds with detailed comments (no live network)
-- Mock Supabase and HTTP clients for predictability
+- Tests are not written yet. The app is tested manually
 
-## Known Gaps / TODO
-
-- `llm_conversation` handler is a stub; wire to `llm/handoff_manager.py` if enabling free-form chat.
-- The bundled `.env` may include extra variables; prefer the variables listed above.
+# 
 
 ## Deployment Notes
 
