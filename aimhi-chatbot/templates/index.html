@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta name="supabase-url" content="{{ supabase_url }}">
   <meta name="supabase-key" content="{{ supabase_anon_key }}">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/webllm-theme.css') }}">
   
@@ -28,57 +28,102 @@
   <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%232563eb'/><text x='50' y='58' font-size='52' text-anchor='middle' fill='white'>Y</text></svg>">
 </head>
-<body class="bg-white text-neutral-900">
-  <div class="min-h-screen w-full bg-gradient-to-br from-amber-50 via-rose-50 to-orange-50 py-6 px-3 sm:px-6">
-    <div class="mx-auto w-full max-w-5xl rounded-3xl bg-white shadow-2xl ring-1 ring-neutral-200 overflow-hidden">
-      <!-- Header -->
-      <header class="h-20 sm:h-24 bg-white text-neutral-900 border-b border-neutral-200 px-4 sm:px-6 flex items-center justify-between">
-        <div class="flex items-center gap-3 min-w-0">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-green-400 grid place-items-center text-neutral-900 font-bold">🌿</div>
-          <div class="truncate">
-            <div class="font-semibold text-lg leading-tight">Yarn</div>
-            <div class="text-sm opacity-90">Here to yarn with you</div>
-          </div>
+<body class="bg-gray-50 text-neutral-900">
+  <div class="min-h-screen w-full flex flex-col">
+    <!-- Header -->
+    <header class="h-16 bg-white/80 backdrop-blur-sm border-b border-neutral-200/60 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 transition-all duration-300">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-green-400 grid place-items-center text-neutral-900 font-bold text-sm transition-transform duration-200 hover:scale-105">🌿</div>
+        <div class="truncate">
+          <div class="font-semibold text-lg leading-tight text-neutral-800">Yarn</div>
+          <div class="text-xs opacity-70 text-neutral-600">Here to yarn with you</div>
         </div>
-        <div class="flex items-center gap-2">
-          <span id="envChip" class="hidden sm:inline px-2 py-1 rounded-full bg-neutral-100 ring-1 ring-neutral-200 text-neutral-700 env-chip">API: -</span>
-          <button class="px-3 py-2 rounded-full bg-white hover:bg-neutral-50 ring-1 ring-neutral-300 text-neutral-700 flex items-center gap-2" onclick="window.UI.openHistory()"><i class="bi bi-clock-history"></i><span class="hidden sm:inline">History</span></button>
-          <button class="px-4 py-2 rounded-full bg-white hover:bg-neutral-50 ring-1 ring-neutral-300 text-neutral-700 flex items-center gap-2" onclick="window.UI.showHelp()"><i class="bi bi-life-preserver"></i><span class="hidden sm:inline">Get Help</span></button>
-          <div id="userDisplay" class="hidden px-3 py-2 rounded-full bg-neutral-100 ring-1 ring-neutral-200 text-neutral-700 text-sm">Signed in as <span id="userFirstName"></span></div>
-          <button class="px-4 py-2 rounded-full bg-white hover:bg-neutral-50 ring-1 ring-neutral-300 text-neutral-700 flex items-center gap-2" id="authBtn" onclick="window.UI.openAuth()"><i class="bi bi-person"></i><span id="authBtnText" class="hidden sm:inline">Sign in</span></button>
-          <button class="px-3 py-2 rounded-full bg-white hover:bg-neutral-50 ring-1 ring-neutral-300 text-neutral-700 hidden items-center gap-2" id="signOutBtn" onclick="window.UI.signOut()"><i class="bi bi-box-arrow-right"></i><span class="hidden sm:inline">Sign out</span></button>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="px-3 py-2 rounded-lg bg-white/70 hover:bg-white hover:shadow-sm border border-neutral-200/60 text-neutral-700 flex items-center gap-2 transition-all duration-200 hover:scale-105" onclick="window.UI.openHistory()">
+          <i class="bi bi-clock-history text-sm"></i>
+          <span class="hidden sm:inline text-sm">History</span>
+        </button>
+        <button class="px-3 py-2 rounded-lg bg-white/70 hover:bg-white hover:shadow-sm border border-neutral-200/60 text-neutral-700 flex items-center gap-2 transition-all duration-200 hover:scale-105" onclick="window.UI.showHelp()">
+          <i class="bi bi-life-preserver text-sm"></i>
+          <span class="hidden sm:inline text-sm">Get Help</span>
+        </button>
+        <div id="userDisplay" class="hidden px-3 py-2 rounded-lg bg-neutral-100/60 border border-neutral-200/60 text-neutral-700 text-sm">
+          <span id="userFirstName"></span>
         </div>
-      </header>
+        <button class="px-3 py-2 rounded-lg bg-white/70 hover:bg-white hover:shadow-sm border border-neutral-200/60 text-neutral-700 flex items-center gap-2 transition-all duration-200 hover:scale-105" id="authBtn" onclick="window.UI.openAuth()">
+          <i class="bi bi-person text-sm"></i>
+          <span id="authBtnText" class="hidden sm:inline text-sm">Sign in</span>
+        </button>
+        <button class="px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 hidden items-center gap-2 transition-all duration-200" id="signOutBtn" onclick="window.UI.signOut()">
+          <i class="bi bi-box-arrow-right text-sm"></i>
+          <span class="hidden sm:inline text-sm">Sign out</span>
+        </button>
+      </div>
+    </header>
 
-      <!-- Messages -->
-      <div id="chatMessages" class="flex-1 overflow-y-auto p-6 sm:p-10 space-y-3 w-full">
-        <div class="max-w-3xl mx-auto text-center">
-          <div class="text-5xl mb-4">👋</div>
-          <h2 class="text-2xl sm:text-3xl font-bold text-neutral-900">G'day! I'm Yarn</h2>
-          <p class="text-neutral-600 mt-4">I'm here to have a yarn with you — to listen and help you think about your strengths and what matters to you.</p>
-          <p class="text-neutral-600 mt-2">This is a safe space where we can talk about whatever's on your mind. No judgment, just support.</p>
-          <div class="mt-6 text-left">
-            <div class="rounded-xl border-l-4 border-orange-400 bg-orange-50 p-4 text-neutral-800">
+    <!-- Main Chat Container -->
+    <div class="flex-1 flex">
+      <!-- Messages Area -->
+      <div class="flex-1 flex flex-col max-w-4xl mx-auto w-full">
+        <div id="chatMessages" class="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6">
+          <!-- Welcome Message -->
+          <div id="welcomeMessage" class="max-w-2xl mx-auto text-center animate-fade-in">
+            <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-yellow-400 to-green-400 grid place-items-center text-2xl shadow-lg">
+              🌿
+            </div>
+            <h2 class="text-3xl font-bold text-neutral-800 mb-4">G'day! I'm Yarn</h2>
+            <p class="text-neutral-600 text-lg leading-relaxed mb-3">
+              I'm here to have a yarn with you — to listen and help you think about your strengths and what matters to you.
+            </p>
+            <p class="text-neutral-600 leading-relaxed mb-6">
+              This is a safe space where we can talk about whatever's on your mind. No judgment, just support.
+            </p>
+            
+            <!-- Crisis Notice -->
+            <div class="mt-8 p-4 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 text-left">
               <div class="flex items-start gap-3">
-                <i class="bi bi-info-circle-fill text-orange-500 mt-0.5"></i>
-                <p class="text-sm">This is not a crisis service. If you need immediate help, please click the "Get Help" button above for 24/7 support.</p>
+                <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <i class="bi bi-info-fill text-orange-600 text-xs"></i>
+                </div>
+                <p class="text-sm text-neutral-700 leading-relaxed">
+                  This is not a crisis service. If you need immediate help, please click the "Get Help" button above for 24/7 support.
+                </p>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Composer -->
-      <div class="border-t border-neutral-200 bg-white p-4 sm:p-6">
-        <div class="mx-auto w-full max-w-3xl">
-          <div id="quickActions" class="flex flex-wrap gap-3 mb-3">
-            <button class="px-4 py-2 rounded-full bg-white border border-neutral-200 hover:bg-neutral-50 text-sm shadow-sm" onclick="window.UI.sendQuick('Hi 👋')">Hi 👋</button>
-            <button class="px-4 py-2 rounded-full bg-white border border-neutral-200 hover:bg-neutral-50 text-sm shadow-sm" onclick="window.UI.sendQuick('Ready to chat')">Ready to chat</button>
-            <button class="px-4 py-2 rounded-full bg-white border border-neutral-200 hover:bg-neutral-50 text-sm shadow-sm" onclick="window.UI.sendQuick('Not sure what to say')">Not sure what to say</button>
-          </div>
-          <div class="relative">
-            <input id="messageInput" type="text" class="w-full rounded-full bg-white border border-neutral-300 px-5 py-3 pr-16 outline-none focus:ring-2 focus:ring-primary shadow-sm" placeholder="Type your message here..." maxlength="500" />
-            <button id="sendBtn" class="absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white grid place-items-center shadow-lg" onclick="window.UI.sendMessage()" aria-label="Send message"><i class="bi bi-send-fill"></i></button>
+        <!-- Input Area -->
+        <div class="border-t border-neutral-200/60 bg-white/80 backdrop-blur-sm p-4 sm:p-6">
+          <div class="max-w-2xl mx-auto">
+            <!-- Quick Actions -->
+            <div id="quickActions" class="flex flex-wrap gap-2 mb-4">
+              <button class="px-4 py-2 rounded-full bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-sm text-sm text-neutral-700 transition-all duration-200 hover:scale-105 hover:-translate-y-0.5" onclick="window.UI.sendQuick('Hi 👋')">
+                Hi 👋
+              </button>
+              <button class="px-4 py-2 rounded-full bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-sm text-sm text-neutral-700 transition-all duration-200 hover:scale-105 hover:-translate-y-0.5" onclick="window.UI.sendQuick('Ready to chat')">
+                Ready to chat
+              </button>
+              <button class="px-4 py-2 rounded-full bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-sm text-sm text-neutral-700 transition-all duration-200 hover:scale-105 hover:-translate-y-0.5" onclick="window.UI.sendQuick('Not sure what to say')">
+                Not sure what to say
+              </button>
+            </div>
+            
+            <!-- Message Input -->
+            <div class="relative">
+              <textarea id="messageInput" 
+                class="w-full rounded-2xl bg-white border border-neutral-300 px-6 py-4 pr-14 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 shadow-sm transition-all duration-200 text-base placeholder-neutral-500 resize-none overflow-hidden min-h-[56px] max-h-[200px]" 
+                placeholder="Type your message here..." 
+                maxlength="500"
+                rows="1"></textarea>
+              <button id="sendBtn" 
+                class="absolute right-2 bottom-2 w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white grid place-items-center shadow-md transition-all duration-200 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:scale-100" 
+                onclick="window.UI.sendMessage()" 
+                aria-label="Send message">
+                <i class="bi bi-send-fill text-sm"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -86,75 +131,94 @@
   </div>
 
   <!-- Help Modal -->
-  <div class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center" id="helpModal" role="dialog" aria-hidden="true">
-    <div class="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-5 text-neutral-900">
-      <h3 class="text-lg font-semibold mb-2"><i class="bi bi-exclamation-triangle-fill text-accent"></i> Crisis Support</h3>
-      <p class="text-sm text-neutral-700">If you need immediate help, please call 13YARN (13 92 76) or Lifeline (13 11 14). You’re not alone.</p>
-      <div class="mt-3 text-right"><button class="px-4 py-2 rounded-md border border-neutral-300 hover:bg-neutral-100" onclick="window.UI.hideHelp()">Close</button></div>
+  <div class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center backdrop-blur-sm" id="helpModal" role="dialog" aria-hidden="true">
+    <div class="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 text-neutral-900 shadow-2xl animate-scale-in">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-semibold flex items-center gap-2">
+          <i class="bi bi-exclamation-triangle-fill text-amber-500"></i>
+          Crisis Support
+        </h3>
+        <button class="text-neutral-400 hover:text-neutral-600 transition-colors" onclick="window.UI.hideHelp()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <p class="text-neutral-600 mb-6 leading-relaxed">If you need immediate help, please call 13YARN (13 92 76) or Lifeline (13 11 14). You're not alone.</p>
+      <div class="flex justify-end">
+        <button class="px-4 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-50 transition-colors" onclick="window.UI.hideHelp()">Close</button>
+      </div>
     </div>
   </div>
 
-  <!-- Auth Modal (Google OAuth) -->
-  <div class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center" id="authModal" aria-hidden="true">
-    <div class="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-5 text-neutral-900">
-      <h4 class="text-lg font-semibold mb-3">Sign in to Yarn</h4>
-      <div class="space-y-3">
-        <button id="googleLoginBtn" class="w-full px-4 py-2 rounded-md border border-neutral-300 hover:bg-neutral-100 flex items-center justify-center gap-2">
+  <!-- Auth Modal -->
+  <div class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center backdrop-blur-sm" id="authModal" aria-hidden="true">
+    <div class="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 text-neutral-900 shadow-2xl animate-scale-in">
+      <h4 class="text-xl font-semibold mb-6">Sign in to Yarn</h4>
+      <div class="space-y-4">
+        <button id="googleLoginBtn" class="w-full px-4 py-3 rounded-xl border border-neutral-300 hover:border-neutral-400 hover:shadow-sm bg-white flex items-center justify-center gap-3 transition-all duration-200">
           <img alt="Google" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5"/>
-          <span>Continue with Google</span>
+          <span class="font-medium">Continue with Google</span>
         </button>
-        <div class="text-[11px] text-neutral-500">We use Supabase Auth for secure sign-in. Your session stays on this device.</div>
-        <div class="flex items-center justify-between pt-1">
-          <div class="mt-2 text-xs text-neutral-500">API base: <code id="apiBaseDisplay"></code></div>
-          <button type="button" class="px-4 py-2 rounded-md border border-neutral-300 hover:bg-neutral-100" onclick="window.UI.closeAuth()">Close</button>
+        <div class="text-xs text-neutral-500 leading-relaxed">We use Supabase Auth for secure sign-in. Your session stays on this device.</div>
+        <div class="flex justify-end pt-2">
+          <button type="button" class="px-4 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-50 transition-colors" onclick="window.UI.closeAuth()">Close</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Crisis Popup -->
-  <div class="hidden fixed inset-0 bg-black/60 z-50 items-center justify-center" id="crisisPopup" role="dialog" aria-hidden="true">
-    <div class="w-full max-w-lg rounded-xl border border-neutral-200 bg-white p-5 text-neutral-900 shadow-2xl">
-      <div class="flex items-start justify-between gap-3">
+  <div class="hidden fixed inset-0 bg-black/60 z-50 items-center justify-center backdrop-blur-sm" id="crisisPopup" role="dialog" aria-hidden="true">
+    <div class="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white p-6 text-neutral-900 shadow-2xl animate-scale-in">
+      <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h3 class="text-lg font-semibold mb-1">You deserve support</h3>
-          <p class="text-sm text-neutral-700">It sounds like you might be going through a tough time. Here are 24/7 support options you can reach out to right now:</p>
+          <h3 class="text-xl font-semibold mb-2">You deserve support</h3>
+          <p class="text-neutral-600 leading-relaxed">It sounds like you might be going through a tough time. Here are 24/7 support options you can reach out to right now:</p>
         </div>
-        <button class="text-neutral-500 hover:text-neutral-900" aria-label="Close" onclick="window.UI.confirmContinueChat()"><i class="bi bi-x-lg"></i></button>
+        <button class="text-neutral-400 hover:text-neutral-600 transition-colors" aria-label="Close" onclick="window.UI.confirmContinueChat()">
+          <i class="bi bi-x-lg"></i>
+        </button>
       </div>
-      <div class="mt-4 space-y-3">
-        <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <div class="font-medium">13YARN (13 92 76)</div>
-          <div class="text-sm text-neutral-700">Aboriginal & Torres Strait Islander Crisis Support</div>
-          <div class="mt-2 flex gap-2">
-            <a class="px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700" href="tel:139276">Call</a>
-            <a class="px-3 py-1.5 rounded-md border border-amber-300 hover:bg-amber-100" href="https://www.13yarn.org.au/" target="_blank" rel="noopener">Visit site</a>
+      <div class="space-y-4">
+        <div class="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 p-4">
+          <div class="font-semibold text-amber-900">13YARN (13 92 76)</div>
+          <div class="text-sm text-amber-800 mb-3">Aboriginal & Torres Strait Islander Crisis Support</div>
+          <div class="flex gap-2">
+            <a class="px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors text-sm font-medium" href="tel:139276">Call</a>
+            <a class="px-4 py-2 rounded-lg border border-amber-300 hover:bg-amber-100 transition-colors text-sm" href="https://www.13yarn.org.au/" target="_blank" rel="noopener">Visit site</a>
           </div>
         </div>
-        <div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
-          <div class="font-medium">Lifeline (13 11 14)</div>
-          <div class="text-sm text-neutral-700">24/7 crisis support and suicide prevention services</div>
-          <div class="mt-2 flex gap-2">
-            <a class="px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700" href="tel:131114">Call</a>
-            <a class="px-3 py-1.5 rounded-md border border-blue-300 hover:bg-blue-100" href="https://www.lifeline.org.au/" target="_blank" rel="noopener">Visit site</a>
+        <div class="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-sky-50 p-4">
+          <div class="font-semibold text-blue-900">Lifeline (13 11 14)</div>
+          <div class="text-sm text-blue-800 mb-3">24/7 crisis support and suicide prevention services</div>
+          <div class="flex gap-2">
+            <a class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors text-sm font-medium" href="tel:131114">Call</a>
+            <a class="px-4 py-2 rounded-lg border border-blue-300 hover:bg-blue-100 transition-colors text-sm" href="https://www.lifeline.org.au/" target="_blank" rel="noopener">Visit site</a>
           </div>
         </div>
       </div>
-      <div class="mt-4 flex items-center justify-end gap-2">
-        <button class="px-4 py-2 rounded-md border border-neutral-300 hover:bg-neutral-100" onclick="window.UI.confirmContinueChat()">Continue chatting</button>
+      <div class="flex justify-end mt-6">
+        <button class="px-4 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-50 transition-colors" onclick="window.UI.confirmContinueChat()">Continue chatting</button>
       </div>
     </div>
   </div>
 
   <!-- History Drawer -->
   <div id="historyDrawer" class="hidden fixed inset-0 z-50">
-    <div class="absolute inset-0 bg-black/30" onclick="window.UI.closeHistory()"></div>
-    <aside class="absolute right-0 top-0 h-full w-80 max-w-full bg-white border-l border-neutral-200 shadow-2xl flex flex-col">
-      <div class="p-4 border-b border-neutral-200 flex items-center justify-between">
-        <div class="font-semibold">Chat History</div>
-        <button class="text-neutral-500 hover:text-neutral-900" onclick="window.UI.closeHistory()" aria-label="Close history"><i class="bi bi-x-lg"></i></button>
+    <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" onclick="window.UI.closeHistory()"></div>
+    <aside class="absolute right-0 top-0 h-full w-80 max-w-full bg-white/95 backdrop-blur-sm border-l border-neutral-200/60 shadow-2xl flex flex-col animate-slide-in-right">
+      <div class="p-6 border-b border-neutral-200/60 flex items-center justify-between">
+        <div class="font-semibold text-lg text-neutral-800">Chat History</div>
+        <button class="text-neutral-400 hover:text-neutral-600 transition-colors p-1" onclick="window.UI.closeHistory()" aria-label="Close history">
+          <i class="bi bi-x-lg"></i>
+        </button>
       </div>
-      <div id="sessionList" class="p-2 overflow-y-auto grow"></div>
+      <div id="sessionList" class="p-4 overflow-y-auto flex-1">
+        <!-- Sessions will be loaded here -->
+        <div class="text-center text-neutral-500 mt-12">
+          <i class="bi bi-clock-history text-2xl mb-3 opacity-50"></i>
+          <p class="text-sm">Your chat history will appear here</p>
+        </div>
+      </div>
     </aside>
   </div>
 
