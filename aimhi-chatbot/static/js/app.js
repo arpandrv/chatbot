@@ -13,13 +13,13 @@
     const avatar = ce('div', 'w-8 h-8 rounded-full grid place-items-center text-sm font-medium');
     avatar.textContent = sender === 'bot' ? 'Y' : 'You';
     if (sender === 'bot') {
-      avatar.classList.add('bg-gradient-to-br','from-primary','to-accent','text-white');
+      avatar.classList.add('avatar-bot');
     } else {
-      avatar.classList.add('bg-neutral-300');
+      avatar.classList.add('avatar-user');
     }
     const bubble = ce('div', 'max-w-[80%] rounded-xl border px-3 py-2 text-sm break-words');
-    if (sender === 'bot') { bubble.classList.add('bg-white','border-neutral-200','text-neutral-900'); }
-    else { bubble.classList.add('bg-primary/10','border-blue-200','text-neutral-900'); }
+    if (sender === 'bot') { bubble.classList.add('bubble-bot'); }
+    else { bubble.classList.add('bubble-user'); }
     const p = ce('p');
     if (isHTML) p.innerHTML = text; else p.textContent = text;
     bubble.appendChild(p);
@@ -31,8 +31,8 @@
 
   const showTyping = () => {
     if (typingEl) return; typingEl = ce('div', 'flex gap-3 items-start'); typingEl.id='typing';
-    const avatar = ce('div', 'w-8 h-8 rounded-full grid place-items-center text-sm font-medium bg-gradient-to-br from-primary to-accent text-white'); avatar.textContent = 'Y';
-    const bubble = ce('div', 'max-w-[80%] rounded-xl border px-3 py-2 text-sm bg-white border-neutral-200');
+    const avatar = ce('div', 'w-8 h-8 rounded-full grid place-items-center text-sm font-medium avatar-bot'); avatar.textContent = 'Y';
+    const bubble = ce('div', 'max-w-[80%] rounded-xl border px-3 py-2 text-sm bubble-bot');
     const dots = ce('div', 'flex gap-1 items-center');
     for (let i=0;i<3;i++){ const d=ce('span','inline-block w-2 h-2 rounded-full bg-neutral-400'); d.style.opacity = String(0.4 + i*0.2); dots.appendChild(d); }
     bubble.appendChild(dots); typingEl.appendChild(avatar); typingEl.appendChild(bubble);
@@ -223,6 +223,7 @@
 
   // Init
   document.addEventListener('DOMContentLoaded', async () => {
+    try { document.title = 'Yarn Chat — Experimental Frontend'; } catch {}
     els.chat = qs('#chatMessages'); els.input = qs('#messageInput'); els.send = qs('#sendBtn');
     attachOAuthHandlers();
     initSupabase();
@@ -247,6 +248,12 @@
         const h = await API.health(); envEl.textContent = `API: ${API.base} (${h.status||'?'})`;
       } catch { envEl.textContent = `API: ${API.base} (offline)`; }
     }
+
+    // Normalize brand chip text in header if it contains placeholder glyphs
+    try {
+      const brand = document.querySelector('header .grid.place-items-center.text-neutral-900.font-bold');
+      if (brand) brand.textContent = 'Y';
+    } catch {}
 
     if (localStorage.getItem('token')) {
       qs('#authBtnText').textContent = 'Signed in';

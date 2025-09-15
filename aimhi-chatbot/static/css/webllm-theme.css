@@ -1,0 +1,84 @@
+/* Web-LLM inspired theme tokens (light and dark) */
+:root {
+  --white: #ffffff;
+  --black: rgb(48, 48, 48);
+  --gray: rgb(240, 240, 240);
+  --light-gray: rgb(120, 120, 120);
+  --primary: rgb(90, 96, 135); /* ~#5A6087 */
+  --primary-tint: rgba(90, 96, 135, 0.10);
+  --second: rgb(228, 229, 241); /* sidebar/secondary */
+  --hover-color: #f3f3f3;
+  --bar-color: rgba(0, 0, 0, 0.1);
+  --mlc-icon-color: rgb(6, 37, 120);
+
+  --shadow: 50px 50px 100px 10px rgba(0, 0, 0, 0.1);
+  --card-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.05);
+  --border-in-light: 1px solid rgb(222, 222, 222);
+  --border-in-dark: 1px solid rgba(136, 136, 136, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --white: rgb(30, 30, 30);
+    --black: rgb(187, 187, 187);
+    --gray: rgb(21, 21, 21);
+    --light-gray: rgb(120, 120, 120);
+    --primary: rgb(60, 72, 144);
+    --primary-tint: rgba(60, 72, 144, 0.20);
+    --second: rgb(36, 40, 52);
+    --hover-color: #323232;
+    --bar-color: rgba(255, 255, 255, 0.1);
+    --border-in-light: 1px solid rgba(255, 255, 255, 0.192);
+    --border-in-dark: 1px solid rgba(255, 255, 255, 0.56);
+  }
+}
+
+/* Optional helpers to progressively adopt tokens */
+.surface-card {
+  background-color: var(--white);
+  color: var(--black);
+  border: var(--border-in-light);
+  box-shadow: var(--card-shadow);
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: #fff;
+}
+
+.text-muted { color: var(--light-gray); }
+
+/* Chat message visuals aligned to web-llm aesthetic */
+.avatar-bot {
+  background-color: var(--primary);
+  color: #fff;
+}
+
+.avatar-user {
+  background-color: var(--second);
+  color: var(--black);
+}
+
+.bubble-bot {
+  background-color: var(--white);
+  color: var(--black);
+  border: var(--border-in-light);
+}
+
+.bubble-user {
+  background-color: var(--primary-tint);
+  color: var(--black);
+  border: var(--border-in-light);
+}
+
+/* Hide stray placeholder glyph */
+.text-5xl.mb-4 { display: none; }
+
+/* Header neutralization when Tailwind gradient classes are present */
+header {
+  background: var(--white) !important;
+  color: var(--black) !important;
+  border-bottom: var(--border-in-light);
+}
+header button { color: var(--black) !important; background: var(--white) !important; border: var(--border-in-light); }
+header #envChip { background: #f2f2f2 !important; color: var(--black) !important; border: var(--border-in-light); }
