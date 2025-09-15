@@ -28,7 +28,7 @@
     } catch {}
   };
 
-  // Render message (user messages without bubbles/avatars)
+  // Render message (user messages without avatar but with proper styling)
   const renderMessage = (sender, text, isHTML=false) => {
     const container = ce('div', 'mb-6');
 
@@ -52,11 +52,13 @@
       container.appendChild(avatar);
       container.appendChild(bubble);
     } else {
-      // User message - simple text without bubble/avatar
+      // User message - no avatar but keep the bubble styling
       container.className = 'mb-6 flex justify-end';
-      const textDiv = ce('div', 'text-neutral-600 text-right max-w-3xl leading-relaxed');
-      textDiv.textContent = text;
-      container.appendChild(textDiv);
+      const bubble = ce('div', 'bg-blue-500 text-white rounded-2xl px-4 py-3 max-w-3xl shadow-sm');
+      const p = ce('p', 'leading-relaxed');
+      p.textContent = text;
+      bubble.appendChild(p);
+      container.appendChild(bubble);
     }
 
     // Add animation class
@@ -133,16 +135,34 @@
   const toggleSidebar = () => {
     const sidebar = qs('#sidebar');
     const collapsedSidebar = qs('#collapsedSidebar');
+    const toggleBtn = qs('#toggleSidebar i');
 
-    if (sidebar.classList.contains('hidden')) {
+    if (sidebar.style.display === 'none' || sidebar.classList.contains('hidden')) {
       // Expand
       sidebar.classList.remove('hidden');
+      sidebar.style.display = 'flex';
       collapsedSidebar.classList.add('hidden');
+      collapsedSidebar.style.display = 'none';
+
+      // Update icon
+      if (toggleBtn) {
+        toggleBtn.className = 'bi bi-chevron-left text-sm';
+      }
     } else {
       // Collapse
       sidebar.classList.add('hidden');
+      sidebar.style.display = 'none';
       collapsedSidebar.classList.remove('hidden');
+      collapsedSidebar.style.display = 'flex';
+
+      // Update icon
+      if (toggleBtn) {
+        toggleBtn.className = 'bi bi-chevron-right text-sm';
+      }
     }
+
+    // Save preference
+    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('hidden') ? 'true' : 'false');
   };
 
   // Profile dropdown functionality
@@ -560,10 +580,31 @@
     });
 
     // Sidebar controls
-    qs('#toggleSidebar').addEventListener('click', toggleSidebar);
-    qs('#expandSidebar').addEventListener('click', toggleSidebar);
-    qs('#newChatBtn').addEventListener('click', createNewSession);
-    qs('#newChatBtnCollapsed').addEventListener('click', createNewSession);
+    const toggleBtn = qs('#toggleSidebar');
+    const expandBtn = qs('#expandSidebar');
+    const newChatBtn = qs('#newChatBtn');
+    const newChatBtnCollapsed = qs('#newChatBtnCollapsed');
+
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
+    if (expandBtn) expandBtn.addEventListener('click', toggleSidebar);
+    if (newChatBtn) newChatBtn.addEventListener('click', createNewSession);
+    if (newChatBtnCollapsed) newChatBtnCollapsed.addEventListener('click', createNewSession);
+
+    // Restore sidebar preference
+    const sidebarCollapsed = localStorage.getItem('sidebarCollapsed');
+    if (sidebarCollapsed === 'true') {
+      // Start with sidebar collapsed
+      const sidebar = qs('#sidebar');
+      const collapsedSidebar = qs('#collapsedSidebar');
+      if (sidebar) {
+        sidebar.classList.add('hidden');
+        sidebar.style.display = 'none';
+      }
+      if (collapsedSidebar) {
+        collapsedSidebar.classList.remove('hidden');
+        collapsedSidebar.style.display = 'flex';
+      }
+    }
 
     // Profile dropdown
     qs('#profileBtn').addEventListener('click', toggleProfileDropdown);
