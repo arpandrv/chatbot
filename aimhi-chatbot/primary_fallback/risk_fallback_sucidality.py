@@ -12,6 +12,7 @@ HF_RISK_API_URL = os.getenv(
     "HF_RISK_API_URL",
     "https://router.huggingface.co/hf-inference/models/sentinet/suicidality",
 )
+HF_RISK_TIMEOUT = float(os.getenv("HF_RISK_TIMEOUT", "5.0"))
 CONFIDENCE_THRESHOLD = float(os.getenv("RISK_CONFIDENCE_THRESHOLD", 0.5))
 
 
@@ -29,7 +30,12 @@ def detect_risk_fallback(text: str) -> Tuple[str, float, Optional[str]]:
             raise RuntimeError("HF_TOKEN not set; cannot call HF Inference API")
         headers = {"Authorization": f"Bearer {HF_TOKEN}"}
         payload = {"inputs": text}
-        resp = requests.post(HF_RISK_API_URL, headers=headers, json=payload)
+        resp = requests.post(
+            HF_RISK_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=HF_RISK_TIMEOUT,
+        )
         resp.raise_for_status()
         result: List[Dict[str, Any]] = resp.json()
         if not isinstance(result, list) or not result:

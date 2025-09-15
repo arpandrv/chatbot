@@ -126,14 +126,17 @@ def is_llm_available() -> bool:
 
 
 def detect_risk(text: str, timeout: Optional[float] = None) -> Dict:
-    """Main risk detection function with automatic fallback."""
-    # Try LLM first if available
+    """Main risk detection with single-pass fallback.
+
+    If an LLM is configured/available, return its result (including any
+    internal fallback chosen by that path). Only use the direct HF fallback
+    when no LLM is available.
+    """
     if is_llm_available():
-        result = detect_risk_llm(text, timeout)
-        if result.get("label") and not result.get("method") == "huggingface_fallback":
-            return result
-    
-    # Direct fallback if LLM not available
+        # Return whatever the LLM path determines (LLM or its own fallback)
+        return detect_risk_llm(text, timeout)
+
+    # No LLM configured/available: use HF fallback directly
     logger.info("LLM not available, using HuggingFace fallback")
     label, confidence, error = detect_risk_fallback(text)
     return {

@@ -7,6 +7,26 @@
   const qs = (sel) => document.querySelector(sel);
   const ce = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
 
+  // Textarea auto-resize helper
+  const autoResizeTextarea = (el) => {
+    try {
+      if (!el) return;
+      // Reset height to measure correct scrollHeight
+      el.style.height = 'auto';
+      const computed = getComputedStyle(el);
+      const maxHStr = computed.getPropertyValue('max-height');
+      const maxH = maxHStr && maxHStr.endsWith('px') ? parseInt(maxHStr, 10) : null;
+      const newH = el.scrollHeight;
+      if (maxH && newH > maxH) {
+        el.style.overflowY = 'auto';
+        el.style.height = maxH + 'px';
+      } else {
+        el.style.overflowY = 'hidden';
+        el.style.height = newH + 'px';
+      }
+    } catch {}
+  };
+
   const renderMessage = (sender, text, isHTML=false) => {
     const container = ce('div', 'message-container');
     if (sender === 'user') container.classList.add('user');
@@ -461,7 +481,10 @@
     els.send.addEventListener('click', sendMessage);
     
     // Auto-resize textarea as user types
-    els.input.addEventListener('input', () => autoResizeTextarea(els.input));
+    if (els.input) {
+      autoResizeTextarea(els.input);
+      els.input.addEventListener('input', () => autoResizeTextarea(els.input));
+    }
     
     els.input.addEventListener('keypress', (e) => { 
       if (e.key === 'Enter' && !e.shiftKey) { 
