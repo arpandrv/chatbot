@@ -1,21 +1,36 @@
 #!/usr/bin/env python3
 """
 Environment Variables Checker for Render Deployment
-Loads and logs all required environment variables to verify configuration
+Loads and prints all required environment variables to verify configuration
 """
 
 import os
-import logging
+from pathlib import Path
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Try to load .env file if python-dotenv is available
+try:
+    from dotenv import load_dotenv
+    # Look for .env in current directory and aimhi-chatbot subdirectory
+    env_paths = [
+        Path('.env'),
+        Path('aimhi-chatbot/.env'),
+        Path('./.env'),
+        Path('./aimhi-chatbot/.env')
+    ]
+
+    for env_path in env_paths:
+        if env_path.exists():
+            load_dotenv(env_path)
+            print(f"Loaded environment from: {env_path}")
+            break
+    else:
+        print("No .env file found, using system environment variables only")
+
+except ImportError:
+    print("python-dotenv not installed, using system environment variables only")
 
 def check_env_vars():
-    """Load and log all environment variables"""
+    """Load and print all environment variables"""
 
     env_vars = [
         # Flask Configuration
@@ -78,9 +93,9 @@ def check_env_vars():
         'HF_RISK_API_URL'
     ]
 
-    logger.info("=" * 60)
-    logger.info("ENVIRONMENT VARIABLES CHECK")
-    logger.info("=" * 60)
+    print("=" * 60)
+    print("ENVIRONMENT VARIABLES CHECK")
+    print("=" * 60)
 
     missing_vars = []
     secret_vars = ['SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET', 'HF_TOKEN', 'LLM_API_KEY']
@@ -88,23 +103,23 @@ def check_env_vars():
     for var in env_vars:
         value = os.getenv(var)
         if value is None:
-            logger.warning(f"❌ {var}: NOT SET")
+            print(f"[NOT SET] {var}: NOT SET")
             missing_vars.append(var)
         else:
             if var in secret_vars:
                 # Mask sensitive values
                 masked_value = value[:8] + "*" * (len(value) - 16) + value[-8:] if len(value) > 16 else "*" * len(value)
-                logger.info(f"✅ {var}: {masked_value}")
+                print(f"[OK] {var}: {masked_value}")
             else:
-                logger.info(f"✅ {var}: {value}")
+                print(f"[OK] {var}: {value}")
 
-    logger.info("=" * 60)
+    print("=" * 60)
 
     if missing_vars:
-        logger.error(f"❌ MISSING VARIABLES ({len(missing_vars)}): {', '.join(missing_vars)}")
+        print(f"[ERROR] MISSING VARIABLES ({len(missing_vars)}): {', '.join(missing_vars)}")
         return False
     else:
-        logger.info(f"✅ ALL VARIABLES SET ({len(env_vars)} total)")
+        print(f"[SUCCESS] ALL VARIABLES SET ({len(env_vars)} total)")
         return True
 
 if __name__ == "__main__":

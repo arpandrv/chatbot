@@ -96,7 +96,9 @@ def detect_risk_ollama(text: str, timeout: Optional[float] = None) -> Dict:
 
 def parse_json_response(response_text: str) -> Dict:
     try:
-        parsed = json.loads(response_text)
+        # Convert single quotes to double quotes for JSON parsing
+        corrected_text = response_text.replace("'", '"')
+        parsed = json.loads(corrected_text)
         if isinstance(parsed, dict) and parsed.get("label") in {"risk", "no_risk"}:
             return parsed
         else:
