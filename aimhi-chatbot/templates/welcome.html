@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Yarn Chat</title>
+  <script src="{{ url_for('static', filename='js/tailwind-config.js') }}"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <script src="{{ url_for('static', filename='js/config.js') }}"></script>
+  <!-- Supabase JS for OAuth (Google) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    window.SUPABASE = {
+      url: "{{ supabase_url }}",
+      key: "{{ supabase_anon_key }}",
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <meta name="supabase-url" content="{{ supabase_url }}">
+  <meta name="supabase-key" content="{{ supabase_anon_key }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/webllm-theme.css') }}">
+
+  <script defer src="{{ url_for('static', filename='js/api.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/welcome.js') }}"></script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%232563eb'/><text x='50' y='58' font-size='52' text-anchor='middle' fill='white'>Y</text></svg>">
+</head>
+<body class="bg-gray-50 text-neutral-900 min-h-screen flex items-center justify-center">
+  <!-- Welcome Container -->
+  <div class="w-full max-w-md mx-auto p-6">
+    <!-- Logo and Title -->
+    <div class="text-center mb-8">
+      <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-yellow-400 to-green-400 grid place-items-center text-3xl shadow-lg animate-bounce-in">
+        🌿
+      </div>
+      <h1 class="text-4xl font-bold text-neutral-800 mb-3 animate-fade-in">Welcome to Yarn</h1>
+      <p class="text-neutral-600 text-lg leading-relaxed animate-fade-in">
+        I'm here to have a yarn with you — to listen and help you think about your strengths and what matters to you.
+      </p>
+    </div>
+
+    <!-- Sign In Card -->
+    <div class="bg-white rounded-2xl border border-neutral-200 p-6 shadow-lg animate-scale-in">
+      <h2 class="text-xl font-semibold mb-6 text-center text-neutral-800">Get Started</h2>
+
+      <!-- Google Sign In Button -->
+      <button id="googleLoginBtn" class="w-full px-4 py-3 rounded-xl border border-neutral-300 hover:border-neutral-400 hover:shadow-sm bg-white flex items-center justify-center gap-3 transition-all duration-200 hover:scale-105 mb-4">
+        <img alt="Google" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5"/>
+        <span class="font-medium">Continue with Google</span>
+      </button>
+
+      <!-- Privacy Notice -->
+      <div class="text-xs text-neutral-500 leading-relaxed text-center">
+        We use Supabase Auth for secure sign-in. Your session stays on this device.
+      </div>
+    </div>
+
+    <!-- Crisis Notice -->
+    <div class="mt-8 p-4 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50">
+      <div class="flex items-start gap-3">
+        <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <i class="bi bi-info-fill text-orange-600 text-xs"></i>
+        </div>
+        <p class="text-sm text-neutral-700 leading-relaxed">
+          This is not a crisis service. If you need immediate help, please contact 13YARN (13 92 76) or Lifeline (13 11 14).
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-2xl p-6 text-center shadow-2xl">
+      <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p class="text-neutral-700">Signing you in...</p>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -262,10 +262,28 @@ def delete_session(session_id: str):
 # ==================== BASIC ENDPOINTS ====================
 
 @app.route('/')
-def index():
-    """Serve the main HTML page with Supabase config for OAuth."""
+def welcome():
+    """Serve the welcome/landing page with sign-in."""
     return render_template(
-        'index.html',
+        'welcome.html',
+        supabase_url=os.getenv('SUPABASE_URL', ''),
+        supabase_anon_key=os.getenv('SUPABASE_ANON_KEY', '')
+    )
+
+@app.route('/chat')
+def chat():
+    """Serve the main chat interface."""
+    return render_template(
+        'chat.html',
+        supabase_url=os.getenv('SUPABASE_URL', ''),
+        supabase_anon_key=os.getenv('SUPABASE_ANON_KEY', '')
+    )
+
+@app.route('/index')
+def index():
+    """Legacy route - redirect to welcome page."""
+    return render_template(
+        'welcome.html',
         supabase_url=os.getenv('SUPABASE_URL', ''),
         supabase_anon_key=os.getenv('SUPABASE_ANON_KEY', '')
     )

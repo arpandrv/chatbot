@@ -518,6 +518,141 @@ input[type="text"]:focus, textarea:focus {
 }
 
 /* ================================
+   New Layout Styles
+   ================================ */
+
+/* Sidebar Styles */
+#sidebar {
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+}
+
+#sidebar.collapsed {
+    transform: translateX(-100%);
+}
+
+#collapsedSidebar {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Profile Dropdown */
+#profileDropdown {
+    animation: slideDown 0.2s ease-out;
+    transform-origin: top right;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Chat Layout */
+#chatMessages {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-light) transparent;
+}
+
+/* Input Area Improvements */
+#messageInput {
+    transition: height 0.2s ease;
+    min-height: 48px;
+    line-height: 1.5;
+}
+
+/* Improved button heights matching */
+#sendBtn {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+/* Chat Session Items */
+.session-item-container {
+    transition: all 0.2s ease;
+}
+
+.session-item-container:hover {
+    background-color: var(--bg-secondary);
+    transform: translateX(2px);
+}
+
+/* User Message Styles (simplified) */
+.user-message {
+    text-align: right;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+}
+
+/* Bot Message Improvements */
+.bot-message-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.bot-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.bot-message-bubble {
+    background: white;
+    border: 1px solid var(--border-light);
+    border-radius: 1rem;
+    padding: 0.75rem 1rem;
+    max-width: 48rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Welcome message improvements */
+#welcomeMessage {
+    transition: opacity 0.3s ease;
+}
+
+/* Quick actions improvements */
+#quickActions {
+    transition: opacity 0.3s ease;
+}
+
+/* Responsive sidebar */
+@media (max-width: 1024px) {
+    #sidebar {
+        position: absolute;
+        z-index: 40;
+        height: 100%;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    #sidebar.collapsed {
+        transform: translateX(-100%);
+    }
+}
+
+@media (max-width: 768px) {
+    #sidebar {
+        width: 100%;
+        max-width: 320px;
+    }
+}
+
+/* ================================
    Reduced Motion Support
    ================================ */
 @media (prefers-reduced-motion: reduce) {
