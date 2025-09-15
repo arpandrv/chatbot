@@ -55,5 +55,6 @@
     sendMessage: (sessionId, message) => jsonFetch(`/sessions/${sessionId}/messages`, { method: 'POST', body: { message } }),
     getMessages: (sessionId, limit=50) => jsonFetch(`/sessions/${sessionId}/messages?limit=${limit}`),
     listSessions: (limit=20) => jsonFetch(`/sessions?limit=${limit}`),
+    deleteSession: (sessionId) => jsonFetch(`/sessions/${sessionId}`, { method: 'DELETE' }),
   };
 })();

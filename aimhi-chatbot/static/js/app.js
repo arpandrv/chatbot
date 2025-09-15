@@ -123,26 +123,53 @@
   };
 
   const renderSessionItem = (s) => {
-    const btn = ce('button', 'session-item');
+    const row = ce('div', 'flex items-center justify-between gap-2 mb-2');
+    const btn = ce('button', 'session-item flex-1 text-left');
     const ts = new Date(s.last_activity || s.created_at || Date.now());
-    
+
     const title = ce('div', 'session-title');
     title.textContent = s.fsm_state || 'New Chat';
-    
+
     const time = ce('div', 'session-time');
     time.textContent = ts.toLocaleDateString() + ' ' + ts.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    
+
     btn.appendChild(title);
     btn.appendChild(time);
-    
-    btn.onclick = async () => { 
-      sessionId = s.session_id; 
-      localStorage.setItem('session_id', sessionId); 
+
+    btn.onclick = async () => {
+      sessionId = s.session_id;
+      localStorage.setItem('session_id', sessionId);
       await loadHistory();
       window.UI.closeHistory();
     };
-    
-    return btn;
+
+    const delBtn = ce('button', 'px-2 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-50 text-neutral-600');
+    delBtn.setAttribute('aria-label', 'Delete chat');
+    delBtn.innerHTML = '<i class="bi bi-trash"></i>';
+    delBtn.onclick = async (e) => {
+      e.stopPropagation();
+      const ok = confirm('Delete this chat? This cannot be undone.');
+      if (!ok) return;
+      try {
+        await API.deleteSession(s.session_id);
+        // If we deleted the active session, start a new one
+        if (sessionId === s.session_id) {
+          localStorage.removeItem('session_id');
+          sessionId = null;
+          await ensureSession();
+          await loadHistory();
+        }
+      } catch (err) {
+        console.error('Delete failed', err);
+        alert('Could not delete chat.');
+      } finally {
+        await loadSessions();
+      }
+    };
+
+    row.appendChild(btn);
+    row.appendChild(delBtn);
+    return row;
   };
 
   const loadSessions = async () => {
@@ -460,6 +487,9 @@
       if (d) { 
         d.classList.add('hidden'); 
       } 
+    },
+    deleteSession: async (id) => {
+      try { await API.deleteSession(id); await loadSessions(); } catch (e) { console.error(e); }
     },
     showCrisisPopup, 
     confirmContinueChat

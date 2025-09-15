@@ -221,6 +221,26 @@ def get_user_sessions(user_id: str, limit: int = 20) -> List[Dict[str, Any]]:
     
     return result.data or []
 
+def delete_session(user_id: str, session_id: str) -> bool:
+    """Delete a user's session and cascade its messages.
+
+    Relies on ON DELETE CASCADE defined in schema.sql to remove related
+    chat_history, risk_detections, and intent_classifications rows.
+    """
+    # Verify session ownership first (defensive; service role bypasses RLS)
+    session = get_session(user_id, session_id)
+    if not session:
+        logger.warning(f"Attempt to delete missing or unauthorized session {session_id}")
+        return False
+
+    result = supabase_service.table('sessions').delete().eq('session_id', session_id).eq('user_id', user_id).execute()
+    success = bool(result.data)
+    if success:
+        logger.info(f"Deleted session {session_id} for user {user_id}")
+    else:
+        logger.error(f"Failed to delete session {session_id} for user {user_id}")
+    return success
+
 def delete_old_sessions(days_old: int = 7) -> int:
     """Delete old inactive sessions (admin function)"""
     cutoff_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)

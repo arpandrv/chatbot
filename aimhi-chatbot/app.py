@@ -22,6 +22,7 @@ from database.repository import (
     accept_response, get_user_sessions, record_risk_detection,
     record_intent_classification
 )
+from database.repository import delete_session as repo_delete_session
 
 # Only load .env automatically in development to avoid leaking dev values in prod
 _dev_guess = os.getenv("FLASK_ENV", "production") != "production"
@@ -66,7 +67,7 @@ cors_config = {
     "origins": ORIGINS,
     "supports_credentials": True,
     "allow_headers": ["Content-Type", "Authorization"],
-    "methods": ["GET", "POST"],
+    "methods": ["GET", "POST", "DELETE"],
     "max_age": 86400,
 }
 
@@ -247,6 +248,16 @@ def list_sessions():
     
     sessions = get_user_sessions(user_id, limit)
     return jsonify(sessions), 200
+
+@app.route('/sessions/<session_id>', methods=['DELETE'])
+@require_auth
+def delete_session(session_id: str):
+    """Delete a chat session and its messages for the authenticated user"""
+    user_id = get_current_user_id()
+    success = repo_delete_session(user_id, session_id)
+    if success:
+        return ('', 204)
+    return jsonify({"error": "Session not found or could not be deleted"}), 404
 
 # ==================== BASIC ENDPOINTS ====================
 
