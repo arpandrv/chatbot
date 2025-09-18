@@ -474,8 +474,9 @@
 
         // Update profile dropdown
         const userEmail = qs('#userEmail');
-        if (userEmail && currentUser?.email) {
-          userEmail.textContent = currentUser.email;
+        if (userEmail) {
+          const display = currentUser?.email || currentUser?.phone || 'Signed in';
+          userEmail.textContent = display;
         }
 
         return true;

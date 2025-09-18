@@ -4,7 +4,7 @@ A Flask + Supabase, safety-aware chatbot that guides a young person through the 
 
 ## Features
 
-- Supabase Auth (Google OAuth) with JWT in `Authorization: Bearer <token>`
+- Supabase Auth (Google OAuth + Phone OTP) with JWT in `Authorization: Bearer <token>`
 - Per-user sessions; chat history persisted in Supabase
 - FSM-driven prompts from `config/responses.json` with sentiment-aware variation
 - NLP pipeline:
@@ -56,7 +56,7 @@ Production example:
 
 - `GET /health` – returns `{status, database, auth}`
 - Auth
-  - OAuth handled client-side via Supabase JS (Google)
+  - Auth handled client-side via Supabase JS (Google OAuth or Phone OTP)
   - `GET /auth/me` – returns `{user_id, authenticated}` if JWT valid
 - Sessions
   - `POST /sessions` – create session; optional `fsm_state`

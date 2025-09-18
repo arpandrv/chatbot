@@ -1,6 +1,7 @@
 (function(){
   // Supabase client
   let supabase = null;
+  let lastPhone = '';
 
   const initSupabase = () => {
     try {
@@ -32,6 +33,22 @@
     }
   };
 
+  const setPhoneStatus = (msg, type='info') => {
+    const el = document.getElementById('phoneStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.classList.remove('text-red-600','text-emerald-600','text-neutral-500');
+    if (type === 'error') el.classList.add('text-red-600');
+    else if (type === 'success') el.classList.add('text-emerald-600');
+    else el.classList.add('text-neutral-500');
+  };
+
+  const isLikelyE164 = (s) => {
+    if (!s) return false;
+    const v = s.replace(/\s+/g,'');
+    return /^\+\d{7,15}$/.test(v);
+  };
+
   const loginWithGoogle = async () => {
     if (!supabase) {
       alert('Authentication not configured');
@@ -54,6 +71,79 @@
       hideLoading();
       console.error('Sign-in error:', error);
       alert(error.message || 'Sign-in failed');
+    }
+  };
+
+  const sendPhoneCode = async () => {
+    if (!supabase) {
+      alert('Authentication not configured');
+      return;
+    }
+    const phoneInput = document.getElementById('phoneInput');
+    const sendBtn = document.getElementById('sendCodeBtn');
+    const codeSection = document.getElementById('codeSection');
+    if (!phoneInput || !sendBtn) return;
+
+    const raw = phoneInput.value.trim();
+    const phone = raw.replace(/\s+/g, '');
+    if (!isLikelyE164(phone)) {
+      setPhoneStatus('Please enter a valid phone in international format, e.g. +61...', 'error');
+      phoneInput.focus();
+      return;
+    }
+
+    try {
+      setPhoneStatus('Sending code...');
+      sendBtn.disabled = true;
+      showLoading();
+      const { error } = await supabase.auth.signInWithOtp({ phone });
+      if (error) throw error;
+      lastPhone = phone;
+      if (codeSection) codeSection.classList.remove('hidden');
+      setPhoneStatus('Code sent. Check your SMS and enter the 6-digit code.', 'success');
+      const codeInput = document.getElementById('codeInput');
+      if (codeInput) codeInput.focus();
+    } catch (e) {
+      console.error('OTP send error:', e);
+      setPhoneStatus(e?.message || 'Could not send code. Please try again.', 'error');
+    } finally {
+      hideLoading();
+      sendBtn.disabled = false;
+    }
+  };
+
+  const verifyPhoneCode = async () => {
+    if (!supabase) return;
+    const codeInput = document.getElementById('codeInput');
+    const verifyBtn = document.getElementById('verifyCodeBtn');
+    if (!codeInput || !verifyBtn) return;
+
+    const token = (codeInput.value || '').trim();
+    if (!/^[0-9]{4,8}$/.test(token)) {
+      setPhoneStatus('Enter the code sent to your phone.', 'error');
+      codeInput.focus();
+      return;
+    }
+
+    try {
+      setPhoneStatus('Verifying code...');
+      verifyBtn.disabled = true;
+      showLoading();
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: lastPhone,
+        token,
+        type: 'sms',
+      });
+      if (error) throw error;
+
+      // On success, onAuthStateChange will fire (SIGNED_IN) and redirect.
+      setPhoneStatus('Code verified. Signing you in...', 'success');
+    } catch (e) {
+      console.error('OTP verify error:', e);
+      setPhoneStatus(e?.message || 'Verification failed. Please try again.', 'error');
+    } finally {
+      hideLoading();
+      verifyBtn.disabled = false;
     }
   };
 
@@ -85,6 +175,12 @@
     if (googleBtn) {
       googleBtn.onclick = loginWithGoogle;
     }
+
+    // Attach phone OTP handlers
+    const sendBtn = document.getElementById('sendCodeBtn');
+    const verifyBtn = document.getElementById('verifyCodeBtn');
+    if (sendBtn) sendBtn.addEventListener('click', sendPhoneCode);
+    if (verifyBtn) verifyBtn.addEventListener('click', verifyPhoneCode);
 
     // Handle OAuth callback
     if (supabase) {
