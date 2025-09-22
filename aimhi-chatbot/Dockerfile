@@ -30,4 +30,4 @@ ENV FLASK_ENV=production \
 # Start with gunicorn (prod), respect PORT and WEB_CONCURRENCY
 # - Workers are controlled via WEB_CONCURRENCY (default 2)
 # - Additional flags can be passed via GUNICORN_CMD_ARGS env var on the platform
-CMD ["/bin/sh", "-lc", "exec gunicorn -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:${PORT:-5000} app:app"]
+CMD ["/bin/sh", "-lc", "python check_env.py && exec gunicorn -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:${PORT:-5000} app:app"]
