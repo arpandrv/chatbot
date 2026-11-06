@@ -118,9 +118,7 @@ curl --fail https://chatbot.arpanlabs.com/health
 Also verify a real login, user-owned session creation, message persistence,
 classification, and LLM replies with configured credentials before declaring
 the service ready. Existing tests other than `test_deployment.py` are placeholders.
-The existing risk pipeline can return `no_risk` when inference fails; deployment
-checks do not establish clinical safety. Review prompts and test provider failures
-before using this application with real users.
+Risk-classifier failures now pause normal responses with an unavailable message. Detected risk pauses normal generation and exposes a public safety flag for the support popup. Deployment checks do not establish clinical safety. Reconstructed prompts are versioned in `aimhi-chatbot/config/prompts.json` and installed into the private Oracle environment file; the selected OpenAI model is `gpt-4.1-mini`.
 
 ## Later removal (requires approval)
 

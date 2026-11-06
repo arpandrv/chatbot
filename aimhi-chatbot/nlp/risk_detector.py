@@ -105,7 +105,7 @@ def parse_json_response(response_text: str) -> Dict:
             raise ValueError("Missing or invalid 'label' field")
     except Exception as e:
         logger.warning(f"Failed to parse response as JSON: {response_text} ({e})")
-        return {"label": "no_risk", "error": f"Invalid format: {str(e)}"}
+        raise ValueError("Invalid risk classifier output") from e
 
 
 def detect_risk_llm(text: str, timeout: Optional[float] = None) -> Dict:

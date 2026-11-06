@@ -56,7 +56,7 @@ def detect_risk_fallback(text: str) -> Tuple[str, float, Optional[str]]:
         )
         return label, confidence, None
     except Exception as e:
-        return "no_risk", 0.0, str(e)
+        return "unavailable", 0.0, str(e)
 
 
 def is_model_available() -> bool:

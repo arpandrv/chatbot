@@ -64,13 +64,7 @@ def _detect_risk_flag(text: str) -> Dict[str, Any]:
             'risk_details': result or {}
         }
     except Exception:
-        # Legacy compat: try contains_risk if defined
-        try:
-            from nlp.risk_detector import contains_risk  # type: ignore
-            return {'risk_detected': bool(contains_risk(text))}
-        except Exception:
-            # Safe fallback: assume no risk
-            return {'risk_detected': False}
+        return {'risk_detected': False, 'risk_details': {'label': 'unavailable'}}
 
 # --- Configuration ---
 logger = logging.getLogger(__name__)
@@ -198,6 +192,13 @@ def route_message(user_id: str, session_id: str, message: str) -> Dict[str, Any]
         except Exception as e:
             logger.error(f"Failed to record risk detection: {e}")
     
+    if risk_detected:
+        return {'reply': "I'm glad you told me. Please reach out to someone you trust who can be with you, and use the support options shown here. If you are in immediate danger, contact local emergency services.",
+                'debug': {'risk_detected': True, 'response_source': 'safety'}}
+    if risk_info.get('risk_details', {}).get('label') not in {'risk', 'no_risk'}:
+        return {'reply': "I'm having trouble checking messages safely right now. Please try again shortly. If you need urgent support, use Get Help or contact local emergency services.",
+                'debug': {'risk_detected': False, 'safety_unavailable': True, 'response_source': 'safety'}}
+
     # Get current FSM state
     current_state = get_fsm_state(user_id, session_id)
     logger.info(f"FSM state (before): user={user_id} session={session_id} state={current_state}")

@@ -201,6 +201,8 @@ def send_user_message(session_id):
         'user_message_id': user_msg_id,
         'bot_message_id': bot_msg_id,
         'reply': bot_response_text,
+        'risk_detected': bool(debug_payload.get('risk_detected')),
+        'safety_unavailable': bool(debug_payload.get('safety_unavailable')),
         'debug': (debug_payload if not IS_PROD else {})
     }), 200
 

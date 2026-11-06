@@ -430,7 +430,7 @@
       const data = await API.sendMessage(sessionId, msg);
       hideTyping();
       renderMessage('bot', data.reply || '...');
-      updateDebug(data.debug || {});
+      updateDebug({ ...(data.debug || {}), risk_detected: data.risk_detected });
 
       // Update session list
       await loadSessions();
