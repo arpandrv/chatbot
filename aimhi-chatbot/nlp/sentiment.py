@@ -42,7 +42,7 @@ def analyze_sentiment(text: str) -> Dict[str, Any]:
             raise RuntimeError("HF_TOKEN not set; cannot call HF Inference API")
         headers = {"Authorization": f"Bearer {HF_TOKEN}"}
         payload = {"inputs": text}
-        resp = requests.post(HF_SENTIMENT_API_URL, headers=headers, json=payload)
+        resp = requests.post(HF_SENTIMENT_API_URL, headers=headers, json=payload, timeout=10)
         resp.raise_for_status()
         result = resp.json()
         # HF router commonly returns [[{label, score}, ...]] for text-classification

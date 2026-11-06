@@ -48,7 +48,7 @@ Implementation details
 - CORS: in production, `CORS_ORIGINS` must list only trusted origins; app refuses to start otherwise
 - Security headers: CSP (restricts scripts/styles/connect), X‑Frame‑Options=DENY, X‑Content‑Type‑Options=nosniff, basic XSS protection
 - Rate limiting: per‑IP global defaults (`RATE_LIMIT_DAY`, `RATE_LIMIT_HOUR`) and route‑specific caps; Currently using memory. use Redis storage in production multi‑instance setups
-- Authentication: all session endpoints require a valid JWT; middleware verifies `aud=authenticated` and extracts `sub` as `user_id`
+- Authentication: all session endpoints require a valid JWT; middleware asks Supabase Auth to verify the token and uses the returned user ID
 
 ## Known Gaps / Recommendations
 

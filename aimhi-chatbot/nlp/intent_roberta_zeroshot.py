@@ -69,7 +69,7 @@ def _zero_shot_request(text: str, candidate_labels: List[str]) -> Any:
             "multi_label": False,
         },
     }
-    resp = requests.post(HF_INTENT_API_URL, headers=_headers(), json=payload)
+    resp = requests.post(HF_INTENT_API_URL, headers=_headers(), json=payload, timeout=10)
     resp.raise_for_status()
     return resp.json()
 

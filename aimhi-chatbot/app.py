@@ -362,7 +362,7 @@ def add_security_headers(response):
     else:
         csp = (
             "default-src 'self'; "
-            "style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             "script-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com; "
             "img-src 'self' data: https://www.gstatic.com; "
             "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; "

@@ -1,3 +1,5 @@
+For the Oracle/Traefik installation and the authoritative required/optional environment list, see [DEPLOYMENT.md](../../DEPLOYMENT.md).
+
 # AIMhi-Y “Yarn” Chatbot
 
 A Flask + Supabase, safety-aware chatbot that guides a young person through the AIMhi Stay Strong 4-step model using a deterministic flow (FSM) with optional LLM handoff. Risk detection surfaces crisis resources via a non-blocking popup; the conversation continues unless the user chooses otherwise.
@@ -26,17 +28,17 @@ A Flask + Supabase, safety-aware chatbot that guides a young person through the 
 
 Then install dependencies:
 
-- `pip install -r aimhi-chatbot/requirements.txt`
+- `pip install -r aimhi-chatbot/requirements.lock`
 2) Configure environment
 - Create `aimhi-chatbot/.env` and set at minimum:
   - Core: `FLASK_ENV`, `SECRET_KEY`, `CORS_ORIGINS`, optional `PORT`, `LOG_LEVEL`, `WEB_CONCURRENCY`, `GUNICORN_CMD_ARGS`
-  - Supabase: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_TIMEOUT`, `SUPABASE_RETRY_ATTEMPTS`
-  - HF: `HF_TOKEN`
+  - Supabase: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+  - HF: optional `HF_TOKEN` (needed for the Hugging Face fallback)
   - LLM Core: `LLM_PROVIDER` (`openai` or `ollama`), `LLM_API_KEY`, `LLM_MODEL`, `LLM_API_BASE` or `OLLAMA_API_BASE`, `LLM_MAX_TOKENS`
   - Risk Detection: `LLM_TIMEOUT_RISK`, `LLM_TEMPERATURE_RISK`, `LLM_SYSTEM_PROMPT_RISK`
   - Intent Classification: `LLM_TIMEOUT_INTENT`, `LLM_TEMPERATURE_INTENT`, `LLM_SYSTEM_PROMPT_INTENT`
   - Sentiment Analysis: `LLM_TIMEOUT_SENTIMENT`, `LLM_TEMPERATURE_SENTIMENT`, `LLM_SYSTEM_PROMPT_SENTIMENT`
-  - LLM Handoff: `LLM_TIMEOUT_HANDOFF`, `LLM_TEMPERATURE_HANDOFF`, `LLM_HANDOFF_SYSTEM_PROMPT`
+  - LLM Handoff: `LLM_HANDOFF_SYSTEM_PROMPT` (generation uses `LLM_TIMEOUT` and `LLM_TEMPERATURE`)
   - NLP Thresholds: `INTENT_CONFIDENCE_THRESHOLD`, `SENTIMENT_CONFIDENCE_THRESHOLD`, `RISK_CONFIDENCE_THRESHOLD`
   - HF API URLs: `HF_INTENT_API_URL`, `HF_SENTIMENT_API_URL`, `HF_RISK_API_URL`
   - Rate limit: `RATE_LIMIT_STORAGE` (e.g., `memory://` or `redis://...`), `RATE_LIMIT_DAY`, `RATE_LIMIT_HOUR`
@@ -100,8 +102,8 @@ Core
 
 Supabase
 
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`
-- Optional: `SUPABASE_TIMEOUT`, `SUPABASE_RETRY_ATTEMPTS`
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- Bearer tokens are verified through Supabase Auth; no JWT signing secret is needed.
 
 Hugging Face
 
@@ -117,7 +119,7 @@ LLM (OpenAI/Ollama)
 - Risk Detection: `LLM_TIMEOUT_RISK`, `LLM_TEMPERATURE_RISK`, `LLM_SYSTEM_PROMPT_RISK`
 - Intent Classification: `LLM_TIMEOUT_INTENT`, `LLM_TEMPERATURE_INTENT`, `LLM_SYSTEM_PROMPT_INTENT`
 - Sentiment Analysis: `LLM_TIMEOUT_SENTIMENT`, `LLM_TEMPERATURE_SENTIMENT`, `LLM_SYSTEM_PROMPT_SENTIMENT`
-- Handoff/Free-form: `LLM_TIMEOUT_HANDOFF`, `LLM_TEMPERATURE_HANDOFF`, `LLM_HANDOFF_SYSTEM_PROMPT`
+- Handoff/Free-form: `LLM_HANDOFF_SYSTEM_PROMPT` (generation uses `LLM_TIMEOUT` and `LLM_TEMPERATURE`)
 
 ## Security
 

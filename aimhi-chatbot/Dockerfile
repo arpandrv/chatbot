@@ -14,11 +14,14 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # Copy and install requirements (monorepo-safe)
-COPY aimhi-chatbot/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+COPY aimhi-chatbot/requirements.txt aimhi-chatbot/requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
 
 # Copy app code (only the subdirectory)
 COPY aimhi-chatbot/ .
+
+RUN useradd --create-home --uid 10001 chatbot
+USER chatbot
 
 # Expose port
 EXPOSE 5000

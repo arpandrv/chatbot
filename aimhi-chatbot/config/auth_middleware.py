@@ -6,11 +6,10 @@ Reduced try/except blocks and simplified error handling.
 
 import jwt
 import logging
-import os
 from functools import wraps
 from flask import request, jsonify, g
 from typing import Optional
-from config.supabase_client import JWT_SECRET
+from config.supabase_client import supabase_anon
 
 logger = logging.getLogger(__name__)
 
@@ -27,45 +26,18 @@ def extract_user_from_token() -> Optional[str]:
     if not auth_header.startswith('Bearer '):
         raise Exception("Invalid authorization header format. Use 'Bearer <token>'")
     
-    token = auth_header.split(' ')[1]
-    
-    dev_mode = os.getenv('FLASK_ENV', 'production') != 'production'
-    decoded = None
-    # Prefer verified decode when secret is available
-    if JWT_SECRET:
-        try:
-            decoded = jwt.decode(
-                token,
-                JWT_SECRET,
-                algorithms=['HS256'],
-                audience='authenticated',
-                options={"verify_iss": False}
-            )
-        except Exception as e:
-            # In development, allow unverified decode to avoid local setup blockers
-            if dev_mode:
-                logger.warning(f"JWT verify failed in dev, using unverified decode: {e}")
-                decoded = jwt.decode(token, options={
-                    'verify_signature': False,
-                    'verify_aud': False,
-                    'verify_iss': False
-                })
-            else:
-                raise
-    else:
-        if dev_mode:
-            decoded = jwt.decode(token, options={
-                'verify_signature': False,
-                'verify_aud': False,
-                'verify_iss': False
-            })
-        else:
-            raise Exception("JWT secret not configured")
-    
-    user_id = decoded.get('sub')
-    if not user_id:
-        raise Exception("No user ID in token")
-        
+    token = auth_header.removeprefix('Bearer ').strip()
+    if not token or supabase_anon is None:
+        raise jwt.InvalidTokenError('Authentication is not configured or token is missing')
+    # Supabase Auth verifies both legacy and asymmetric signing keys.
+    try:
+        result = supabase_anon.auth.get_user(token)
+    except Exception as exc:
+        raise jwt.InvalidTokenError('Invalid or expired token') from exc
+    if not result.user:
+        raise jwt.InvalidTokenError('No authenticated user')
+    user_id = str(result.user.id)
+
     # Store in Flask g for easy access
     g.user_id = user_id
     return user_id
@@ -87,8 +59,6 @@ def require_auth(f):
                 
             # Make user_id available to the route
             request.user_id = user_id
-            return f(*args, **kwargs)
-            
         except jwt.ExpiredSignatureError:
             return jsonify({
                 'error': 'Authentication failed',
@@ -106,6 +76,7 @@ def require_auth(f):
                 'message': str(e)
             }), 401
             
+        return f(*args, **kwargs)
     return decorated
 
 def optional_auth(f):

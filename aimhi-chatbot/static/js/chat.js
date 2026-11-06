@@ -635,3 +635,16 @@
     els.input.focus();
   });
 })();
+
+// Keep controls compatible with the production policy that blocks inline scripts.
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-ui-action], [data-quick-message]');
+  if (!button || !window.UI) return;
+  if (button.dataset.quickMessage !== undefined) {
+    window.UI.sendQuick(button.dataset.quickMessage);
+  } else {
+    const action = button.dataset.uiAction;
+    const allowed = ['showHelp', 'hideHelp', 'sendMessage', 'confirmContinueChat'];
+    if (allowed.includes(action)) window.UI[action]();
+  }
+});

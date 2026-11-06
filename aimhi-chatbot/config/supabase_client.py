@@ -17,8 +17,6 @@ logger = logging.getLogger(__name__)
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
 SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-# JWT secret used to validate Supabase-issued JWTs
-JWT_SECRET = os.getenv('SUPABASE_JWT_SECRET')
 
 # Direct PostgreSQL connections are not used in this app; all access goes through Supabase clients.
 
@@ -44,7 +42,7 @@ def test_connection() -> bool:
             logger.error("Supabase service client not initialized. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars.")
             return False
         # Try to query the sessions table (will fail if schema not set up)
-        supabase_service.table('sessions').select('count').limit(1).execute()
+        supabase_service.table('sessions').select('session_id').limit(1).execute()
         logger.info("Supabase connection successful")
         return True
     except Exception as e:
